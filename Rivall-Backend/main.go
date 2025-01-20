@@ -9,18 +9,18 @@ import (
 	"syscall"
 
 	"Rivall-Backend/api/router"
-	"Rivall-Backend/api/utils"
 	"Rivall-Backend/config"
 	"Rivall-Backend/util/logger"
 
+	"Rivall-Backend/api/global"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
-
-const fmtDBString = "host=%s user=%s password=%s dbname=%s port=%d sslmode=disable"
 
 //	@title			Rivall-Backend
 //	@version		1.0
@@ -35,53 +35,63 @@ const fmtDBString = "host=%s user=%s password=%s dbname=%s port=%d sslmode=disab
 // @host		localhost:8080
 // @basePath	/v1
 
-func ConnectMongoDB(l *zerolog.Logger, c *config.Conf) *mongo.Client {
+func ConnectMongoDB(c *config.Conf) *mongo.Client {
 	// Connect to MongoDB
 	var uri string = c.DB.MongoURI
 	if uri == "" {
-		l.Fatal().Msg("MongoDB URI is empty")
+		log.Fatal().Msg("MongoDB URI is empty")
 		panic("MongoDB URI is empty")
 	}
-	mongoClient, err := mongo.Connect(options.Client().ApplyURI(uri))
+	MongoClient, err := mongo.Connect(options.Client().ApplyURI(uri))
 
 	if err != nil {
-		l.Fatal().Err(err).Msg("MongoDB connection failure")
+		log.Fatal().Err(err).Msg("MongoDB connection failure")
 	}
-	l.Info().Msg("MongoDB connection initialized")
+	log.Info().Msg("MongoDB connection initialized")
 
 	// Send a ping to confirm a successful connection
 	var result bson.M
-	if err := mongoClient.Database("admin").RunCommand(context.Background(), bson.D{{"ping", 1}}).Decode(&result); err != nil {
+	if err := MongoClient.Database("admin").RunCommand(context.TODO(), bson.D{{"ping", 1}}).Decode(&result); err != nil {
+		log.Fatal().Err(err).Msg("Failed to ping MongoDB")
 		panic(err)
 	}
-	l.Info().Msg("Pinged your deployment. You successfully connected to MongoDB!")
-	return mongoClient
+	log.Info().Msg("Pinged your deployment. You successfully connected to MongoDB!")
+	return MongoClient
 }
 
-func DisconnectMongoDB(l *zerolog.Logger, mongoClient *mongo.Client) {
-	if err := mongoClient.Disconnect(context.Background()); err != nil {
-		l.Fatal().Err(err).Msg("MongoDB disconnection failure")
+func DisconnectMongoDB(MongoClient *mongo.Client) {
+	if err := MongoClient.Disconnect(context.Background()); err != nil {
+		log.Fatal().Err(err).Msg("MongoDB disconnection failure")
 	}
-	l.Info().Msg("MongoDB disconnected")
+	log.Info().Msg("MongoDB disconnected")
 }
+
+var Logger *zerolog.Logger
+var Validator *validator.Validate
+var MongoClient *mongo.Client
 
 func main() {
 	// Initialize logger, validator, and config
 	c := config.New()
 	logLevel := c.Server.Debug
-	l := logger.New(logLevel)
+	l := logger.New(logLevel, c)
 	v := validator.New()
-	l.Info().Msg("Building Rivall Backend API...")
-	fmt.Println("Logging Level: ", logLevel)
+	log.Info().Msg("Building Rivall Backend API...")
 
 	// Connect MongoDB
-	mongoClient := ConnectMongoDB(l, c)
+	MongoClient := ConnectMongoDB(c)
 
-	// Initialize uility globals
-	utils.New(l, v, mongoClient)
+	// Initialize global variables
+	Logger = l
+	Validator = v
 
 	// Initialize router
-	r := router.New(l, v, mongoClient)
+	r := router.New(l, v, MongoClient)
+
+	// Inject global variables
+	global.Logger = l
+	global.Validator = v
+	global.MongoClient = MongoClient
 
 	// Initialize server
 	s := &http.Server{
@@ -99,26 +109,26 @@ func main() {
 		signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
 		<-sigint
 
-		l.Info().Msgf("Shutting down server %v", s.Addr)
+		log.Info().Msgf("Shutting down server %v:%v", c.Server.Address, c.Server.Port)
 
 		ctx, cancel := context.WithTimeout(context.Background(), c.Server.TimeoutIdle)
 		defer cancel()
 
 		if err := s.Shutdown(ctx); err != nil {
-			l.Error().Err(err).Msg("Server shutdown failure")
+			log.Error().Err(err).Msg("Server shutdown failure")
 		}
 
-		DisconnectMongoDB(l, mongoClient)
+		DisconnectMongoDB(MongoClient)
 
 		close(closed)
 	}()
 
 	// Start server
-	l.Info().Msgf("Starting server %v", s.Addr)
+	log.Info().Msgf("Starting server %v:%v", c.Server.Address, c.Server.Port)
 	if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		l.Fatal().Err(err).Msg("Server startup failure")
+		log.Fatal().Err(err).Msg("Server startup failure")
 	}
 
 	<-closed
-	l.Info().Msgf("Server shutdown successfully")
+	log.Info().Msgf("Server shutdown successfully")
 }

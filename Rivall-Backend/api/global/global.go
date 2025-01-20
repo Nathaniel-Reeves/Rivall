@@ -1,4 +1,4 @@
-package utils
+package global
 
 import (
 	"github.com/go-playground/validator/v10"
@@ -10,10 +10,3 @@ import (
 var Logger *zerolog.Logger
 var Validator *validator.Validate
 var MongoClient *mongo.Client
-
-func New(l *zerolog.Logger, v *validator.Validate, mongoClient *mongo.Client) {
-	// Set global variables
-	Logger = l
-	Validator = v
-	MongoClient = mongoClient
-}

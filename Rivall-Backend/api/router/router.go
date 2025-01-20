@@ -1,7 +1,6 @@
 package router
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -12,48 +11,32 @@ import (
 	"Rivall-Backend/api/resources/health"
 	"Rivall-Backend/api/resources/user"
 	"Rivall-Backend/api/router/middleware"
-	"Rivall-Backend/api/router/middleware/requestlog"
-	"Rivall-Backend/api/utils"
 )
 
-type APIRoute struct {
-	Method  string
-	Path    string
-	Handler http.HandlerFunc
-}
-
-var v1Routes = []APIRoute{
-	{
-		Method:  "POST",
-		Path:    "/users/",
-		Handler: user.WriteOne,
-	},
-}
-
-func AddRoutes(router *mux.Router, routes []APIRoute) {
-	for _, route := range routes {
-		router.HandleFunc(route.Path, func(w http.ResponseWriter, r *http.Request) {
-			fmt.Println(r.Method)
-			if r.Method == route.Method {
-				requestlog.NewHandler(route.Handler, utils.Logger)
-			} else {
-				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			}
-		})
-	}
-}
+var Logger *zerolog.Logger
+var Validator *validator.Validate
+var MongoClient *mongo.Client
 
 func New(l *zerolog.Logger, v *validator.Validate, mongoClient *mongo.Client) *mux.Router {
 	r := mux.NewRouter()
+
+	// Set global variables
+	Logger = l
+	Validator = v
+	MongoClient = mongoClient
+
 	// Add health routes
-	r.HandleFunc("/health", health.Read)
+	r.HandleFunc("/health", health.Read).Methods(http.MethodGet)
+
+	// Add v1 routes
+	r.HandleFunc("/api/v1/users", user.GetUserByUsername).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/users/{id}", user.GetUserById).Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/users", user.PostUser).Methods(http.MethodPost)
 
 	// Add middleware
 	r.Use(middleware.RequestID)
 	r.Use(middleware.ContentTypeJSON)
-
-	// Add v1 routes
-	AddRoutes(r, v1Routes)
+	r.Use(middleware.RequestLogging)
 
 	return r
 }

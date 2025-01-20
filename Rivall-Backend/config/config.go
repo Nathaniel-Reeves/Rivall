@@ -14,6 +14,7 @@ type Conf struct {
 
 type ConfServer struct {
 	Port         int           `env:"SERVER_PORT,required"`
+	Address      string        `env:"SERVER_ADDRESS,required"`
 	TimeoutRead  time.Duration `env:"SERVER_TIMEOUT_READ,required"`
 	TimeoutWrite time.Duration `env:"SERVER_TIMEOUT_WRITE,required"`
 	TimeoutIdle  time.Duration `env:"SERVER_TIMEOUT_IDLE,required"`
@@ -22,7 +23,7 @@ type ConfServer struct {
 
 type ConfDB struct {
 	MongoURI string `env:"MONGO_URI,required"`
-	Debug    bool   `env:"DB_DEBUG,required"`
+	Debug    bool   `env:"DB_DEBUG"`
 }
 
 func New() *Conf {
