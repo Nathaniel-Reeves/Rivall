@@ -52,6 +52,7 @@ jobs:
       
       # Convert go coverage to corbetura format
       - name: Convert go coverage to corbetura format
+        working-directory: Rivall-Backend
         run: gocover-cobertura < coverage.txt > coverage.xml
       
       # Generate code coverage report
