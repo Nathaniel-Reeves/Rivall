@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // Create User
@@ -78,16 +79,17 @@ func GetUserById(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "ID is required", http.StatusBadRequest)
 		return
 	}
-	log.Info().Msgf("ID: %s", id)
 	if id == "" {
 		http.Error(w, "ID is required", http.StatusBadRequest)
 		return
 	}
 
 	// get user data
-	user, err := ReadId(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	user := ReadId(id)
+
+	// handle not found user
+	if user.ID == bson.NilObjectID {
+		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 
@@ -106,9 +108,11 @@ func GetUserByUsername(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get user data
-	user, err := ReadUsername(username)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	user := ReadUsername(username)
+
+	// handle not found user
+	if user.ID == bson.NilObjectID {
+		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 
