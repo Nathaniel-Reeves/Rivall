@@ -30,9 +30,11 @@ jobs:
             ${{ runner.os }}-go-
       
       - name: Run tests
+        working-directory: Rivall-Backend
         run: |
-          cd Rivall-Backend &&
-          go test -race -json -v -coverprofile=coverage.txt ./api/resources... ./api/router... 2>&1 | tee /tmp/gotest.log | gotestfmt
+          go test -race -json -v -coverprofile=coverage.txt ./api/resources... ./api/router... 2>&1 |
+          tee /tmp/gotest.log |
+          gotestfmt
       
       - name: Convert go coverage to corbetura format
         run: gocover-cobertura < coverage.txt > coverage.xml
