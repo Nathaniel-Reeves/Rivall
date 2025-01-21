@@ -75,7 +75,7 @@ func GetUserById(w http.ResponseWriter, r *http.Request) {
 	// get user ID /users/{:id}
 	vars := mux.Vars(r)
 	id, ok := vars["id"]
-	if ok == false {
+	if !ok {
 		http.Error(w, "ID is required", http.StatusBadRequest)
 		return
 	}

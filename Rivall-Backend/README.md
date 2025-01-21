@@ -4,6 +4,56 @@
 # Rivall Backend
 This backend was constructed for the Rivall mobile app.  This project is part of a undergrad capstone project for Nathaniel Reeves at Utah Tech University in Jan 2025.
 
+## Notes
+
+run tests command
+```bash
+go test ./api/resources... ./api/router...
+```
+run tests
+-count n
+    Run each test, benchmark, and fuzz seed n times (default 1).
+    If -cpu is set, run n times for each GOMAXPROCS value.
+    Examples are always run once. -count does not apply to
+    fuzz tests matched by -fuzz.
+
+-cover
+    Enable coverage analysis.
+    Note that because coverage works by annotating the source
+    code before compilation, compilation and test failures with
+    coverage enabled may report line numbers that don't correspond
+    to the original sources.
+
+-failfast
+    Do not start new tests after the first test failure.
+
+-fullpath
+    Show full file names in the error messages.
+
+-json
+    Log verbose output and test results in JSON. This presents the
+    same information as the -v flag in a machine-readable format.
+
+-v
+    Verbose output: log all tests as they are run. Also print all
+    text from Log and Logf calls even if the test succeeds.
+
+-coverprofile cover.out
+    Write a coverage profile to the file after all tests have passed.
+    Sets -cover.
+
+-trace trace.out
+    Write an execution trace to the specified file before exiting.
+
+```bash
+go test -v -cover ./api/resources... ./api/router...
+```
+
+go test help docs
+```bash
+go help testflag
+```
+
 ## 🔋 Batteries included
 
 - The idiomatic structure based on the resource-oriented design.
