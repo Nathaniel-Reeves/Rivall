@@ -34,14 +34,9 @@ jobs:
 
       # Install gocover-cobertura on the VM running the action.
       - name: go mod package cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/Rivall-Backend/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+        working-directory: Rivall-Backend
+        run: |
+          go get github.com/boumenot/gocover-cobertura
       
       # Run API Tests
       - name: Run tests
@@ -53,7 +48,7 @@ jobs:
       # Convert go coverage to corbetura format
       - name: Convert go coverage to corbetura format
         working-directory: Rivall-Backend
-        run: gocover-cobertura < coverage.txt > coverage.xml
+        run: go run github.com/boumenot/gocover-cobertura < coverage.txt > coverage.xml
       
       # Generate code coverage report
       - name: Generate code coverage report
