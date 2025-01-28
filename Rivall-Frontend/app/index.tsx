@@ -6,6 +6,12 @@ import ProductListItem from '../components/ProductListItem';
 
 export default function HomeScreen() {
   return (
-    <FlatList data={products} renderItem={({ item }) => (<ProductListItem product={item} />)} />
+    <FlatList
+      data={products}
+      renderItem={({ item }) => (<ProductListItem product={item} />)}
+      numColumns={2}
+      contentContainerClassName="gap-2"
+      columnWrapperClassName="gap-2"
+    />
   );
 }
