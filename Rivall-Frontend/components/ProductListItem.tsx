@@ -1,7 +1,13 @@
-import { Text } from 'react-native'
+import { View, Text } from 'react-native'
+import { Button, ButtonText } from '@/components/ui/button'
 
 export default function ProductListItem ({ product }: { product: { name: string } }) {
     return (
-      <Text>{product.name}</Text>
+      <View>
+        <Text>{product.name}</Text>
+        <Button>
+          <ButtonText>Add to cart</ButtonText>
+        </Button>
+      </View>
     )
   }
