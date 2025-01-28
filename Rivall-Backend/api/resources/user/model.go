@@ -16,7 +16,7 @@ User struct represents a user in the system
 	"username": "nreeves",
 	"firstName": "Nathaniel",
 	"lastName": "Reeves",
-	"email": "
+	"email": "email@email.com",
 	"password": "password",
 	"image": "https://www.google.com",
 	"createdAt": "2020-10-17T00:00:00Z",
