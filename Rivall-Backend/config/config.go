@@ -5,7 +5,15 @@ import (
 	"time"
 
 	"github.com/joeshaw/envdecode"
+	"github.com/joho/godotenv"
 )
+
+func readDotEnvFile() {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+}
 
 type Conf struct {
 	Server ConfServer
@@ -27,6 +35,7 @@ type ConfDB struct {
 }
 
 func New() *Conf {
+	readDotEnvFile()
 	var c Conf
 	if err := envdecode.StrictDecode(&c); err != nil {
 		log.Fatalf("Failed to decode: %s", err)
@@ -36,6 +45,7 @@ func New() *Conf {
 }
 
 func NewDB() *ConfDB {
+	readDotEnvFile()
 	var c ConfDB
 	if err := envdecode.StrictDecode(&c); err != nil {
 		log.Fatalf("Failed to decode: %s", err)
