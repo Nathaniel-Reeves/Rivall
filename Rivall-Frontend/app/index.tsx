@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import ProductListItem from '@/components/ProductListItem';
 
 import products from '@/assets/products.json';
-import { getUser } from '@/api/users';
+import { getUser } from '@/api/auth';
 
 export default function HomeScreen() {
 
@@ -27,6 +27,9 @@ export default function HomeScreen() {
     queryKey: ['user'],
     queryFn: getUser
   });
+
+  vscode
+  MsQBE1K4DatywUsB
 
   // const { width } = useWindowDimensions();
   // const numColumns = width > 768 ? 3 : 2; // re-renders on screen width change
