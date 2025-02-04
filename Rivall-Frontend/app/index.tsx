@@ -28,9 +28,6 @@ export default function HomeScreen() {
     queryFn: getUser
   });
 
-  vscode
-  MsQBE1K4DatywUsB
-
   // const { width } = useWindowDimensions();
   // const numColumns = width > 768 ? 3 : 2; // re-renders on screen width change
 

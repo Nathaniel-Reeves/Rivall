@@ -8,8 +8,9 @@ import (
 	"github.com/rs/zerolog"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 
+	auth "Rivall-Backend/api/resources/auth"
 	"Rivall-Backend/api/resources/health"
-	"Rivall-Backend/api/resources/user"
+	message_group "Rivall-Backend/api/resources/message-group"
 	"Rivall-Backend/api/router/middleware"
 )
 
@@ -29,9 +30,14 @@ func New(l *zerolog.Logger, v *validator.Validate, mongoClient *mongo.Client) *m
 	r.HandleFunc("/health", health.Read).Methods(http.MethodGet)
 
 	// Add v1 routes
-	r.HandleFunc("/api/v1/users", user.GetUserByUsername).Methods(http.MethodGet)
-	r.HandleFunc("/api/v1/users/{id}", user.GetUserById).Methods(http.MethodGet)
-	r.HandleFunc("/api/v1/users", user.PostUser).Methods(http.MethodPost)
+	publicRouter := r.PathPrefix("/api/v1").Subrouter()
+	publicRouter.HandleFunc("/auth/register", auth.RegisterNewUser).Methods(http.MethodPost)
+	publicRouter.HandleFunc("/auth/login", auth.LoginUser).Methods(http.MethodPost)
+
+	privateRouter := r.PathPrefix("/api/v1").Subrouter()
+	privateRouter.Use(middleware.AuthenticationMiddleware)
+	privateRouter.HandleFunc("/auth/logout", auth.LogoutUser).Methods(http.MethodDelete)
+	privateRouter.HandleFunc("/messagegroups", message_group.PostNewMessageGroup).Methods(http.MethodPost)
 
 	// Add middleware
 	r.Use(middleware.RequestID)
