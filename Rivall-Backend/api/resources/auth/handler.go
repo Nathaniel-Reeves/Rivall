@@ -10,15 +10,17 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/v2/bson"
+
+	"Rivall-Backend/api/global"
+	users "Rivall-Backend/api/resources/users"
 )
 
-func createToken(user User) (string, error) {
+func createToken(user users.User) (string, error) {
 	claims := jwt.MapClaims{}
 	claims["user_id"] = user.ID
-	claims["username"] = user.Username
 	claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte("secret"))
+	return token.SignedString([]byte(global.JWTSecretKey))
 }
 
 func getUserIDFromContext(ctx context.Context) (string, error) {
@@ -28,6 +30,23 @@ func getUserIDFromContext(ctx context.Context) (string, error) {
 		return "", errors.New("user ID not found in context")
 	}
 	return userID, nil
+}
+
+// Test Authorization
+//
+//	@summary		Test Authorization
+//	@description	Test Authorization
+//	@tags			users
+//	@accept			json
+//	@produce		json
+//	@success		200	{object}	DTO
+//	@failure		400	{object}	err.Error
+//	@failure		404
+//	@failure		500	{object}	err.Error
+//	@router			/auth/authorize [get]
+func TestAuthorization(w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msg("User is Authorized")
+	w.Write([]byte("Users is Authorized"))
 }
 
 // Register New User
@@ -47,7 +66,7 @@ func RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("POST new user")
 
 	// get user data
-	user := User{}
+	user := users.User{}
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to decode user, invalid JSON request")
@@ -56,8 +75,24 @@ func RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// check user has all required fields
+	if user.FirstName == "" || user.LastName == "" || user.Email == "" || user.Password == "" {
+		log.Error().Msg("User must have all required fields")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("User must have all required fields."))
+		return
+	}
+
+	// check user does not already exist
+	if users.ReadEmail(user.Email).ID != bson.NilObjectID {
+		log.Error().Msg("User already exists")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("User already exists."))
+		return
+	}
+
 	// insert user data
-	err = CreateUser(user)
+	err = users.CreateUser(user)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to insert user")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -86,7 +121,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("GET user by username")
 
 	// get user data
-	userLogin := User{}
+	userLogin := users.User{}
 	err := json.NewDecoder(r.Body).Decode(&userLogin)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to decode user")
@@ -96,7 +131,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get user from db
-	user := ReadUsername(userLogin.Username)
+	user := users.ReadEmail(userLogin.Email)
 	if user.ID == bson.NilObjectID {
 		log.Warn().Msg("User not found")
 		w.WriteHeader(http.StatusNotFound)
@@ -105,7 +140,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// check password
-	if !ComparePasswords(user.Password, userLogin.Password) {
+	if !users.ComparePasswords(user.Password, userLogin.Password) {
 		log.Warn().Msg("Invalid password")
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Invalid password"))
@@ -121,10 +156,6 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Authorization", token)
-
-	// set user online
-	user.Online = true
-	UpdateUserOnline(user)
 
 	// return user
 	json.NewEncoder(w).Encode(user)
@@ -145,6 +176,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 //	@router			/auth/logout [delete]
 func LogoutUser(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("DELETE user login session")
+	// Remember to delete the authorization token from the client side after this request
 
 	// get user id from context
 	userID, err := getUserIDFromContext(r.Context())
@@ -156,7 +188,7 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get user from db
-	user := ReadId(userID)
+	user := users.ReadId(userID)
 	if user.ID == bson.NilObjectID {
 		log.Warn().Msg("User not found")
 		w.WriteHeader(http.StatusNotFound)
@@ -166,40 +198,5 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 
 	// remove token from header
 	w.Header().Set("Authorization", "")
-
-	// set user offline
-	user.Online = false
-	UpdateUserOnline(user)
-
 	w.WriteHeader(http.StatusOK)
 }
-
-// Reading data from url parameters
-// func LoginUser(w http.ResponseWriter, r *http.Request) {
-// 	log.Info().Msg("GET user by username")
-
-// 	// get user data
-// 	vars := mux.Vars(r)
-// 	username := vars["username"]
-// 	password := vars["password"]
-
-// 	// get user from db
-// 	user := ReadUsername(username)
-// 	if user.ID == bson.NilObjectID {
-// 		log.Warn().Msg("User not found")
-// 		w.WriteHeader(http.StatusNotFound)
-// 		w.Write([]byte("User not found"))
-// 		return
-// 	}
-
-// 	// check password
-// 	if !ComparePasswords(user.Password, password) {
-// 		log.Warn().Msg("Invalid password")
-// 		w.WriteHeader(http.StatusUnauthorized)
-// 		w.Write([]byte("Invalid password"))
-// 		return
-// 	}
-
-// 	// return user
-// 	json.NewEncoder(w).Encode(user)
-// }

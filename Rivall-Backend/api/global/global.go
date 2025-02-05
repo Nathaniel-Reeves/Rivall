@@ -10,3 +10,4 @@ import (
 var Logger *zerolog.Logger
 var Validator *validator.Validate
 var MongoClient *mongo.Client
+var JWTSecretKey string

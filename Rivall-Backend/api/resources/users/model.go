@@ -1,4 +1,4 @@
-package user
+package users
 
 import (
 	"Rivall-Backend/api/global"
@@ -14,13 +14,11 @@ import (
 User struct represents a user in the system
 {
 	"_id": "5f8a0b9b0f1b5b1b3c1b1b1b",
-	"username": "nreeves",
 	"firstName": "Nathaniel",
 	"lastName": "Reeves",
 	"email": "email@email.com",
 	"password": "password",
 	"image": "base64 encoded image",
-	"online": true,
 	"groups": [<message_group>],
 	"contacts": [<user>]
 }
@@ -31,13 +29,11 @@ const collectionName string = "Users"
 
 type User struct {
 	ID          bson.ObjectID   `json:"_id"           bson:"_id"`
-	Username    string          `json:"username"      bson:"username"`
 	FirstName   string          `json:"first_name"    bson:"first_name"`
 	LastName    string          `json:"last_name"     bson:"last_name"`
 	Email       string          `json:"email"         bson:"email"`
 	Password    string          `json:"password"      bson:"password"`
 	AvatarImage string          `json:"avatar_image"  bson:"avatar_image"`
-	Online      bool            `json:"online"        bson:"online"`
 	Groups      []bson.ObjectID `json:"groups"        bson:"groups"`
 	Contacts    []bson.ObjectID `json:"contacts"      bson:"contacts"`
 }
@@ -58,32 +54,33 @@ func ReadId(id string) User {
 	return result
 }
 
-func ReadUsername(username string) User {
-	var user User
-
-	log.Debug().Msgf("Reading user with username '%v'", username)
-	filter := bson.D{{"username", username}}
-
-	collection := global.MongoClient.Database(database).Collection(collectionName)
-	err := collection.FindOne(context.TODO(), filter).Decode(&user)
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed to read user")
-		return User{}
-	}
-	return user
-}
-
 func ReadEmail(email string) User {
 	var result User
 
 	log.Debug().Msgf("Reading user with email '%v'", email)
-	filter := bson.D{}
+	filter := bson.D{{"email", email}}
 
 	collection := global.MongoClient.Database(database).Collection(collectionName)
 	err := collection.FindOne(context.TODO(), filter).Decode(&result)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to read user")
 	}
+	return result
+}
+
+func ReadIdPopulateContacts(id string) User {
+	var result User
+
+	log.Debug().Msgf("Reading user with ID '%v'", id)
+	i, _ := bson.ObjectIDFromHex(id)
+	filter := bson.D{{"_id", i}}
+
+	collection := global.MongoClient.Database(database).Collection(collectionName)
+	err := collection.FindOne(context.TODO(), filter).Decode(&result)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to read user")
+	}
+
 	return result
 }
 
@@ -98,6 +95,12 @@ func CreateUser(user User) error {
 	// hash password
 	user = HashUserPassword(user)
 	user.ID = bson.NewObjectID()
+
+	// TODO: Need to make the default values for groups and contacts
+	// and empty array, currently the are set to null at new user registration
+	//
+	// user.Contacts = bson.TypeArray
+	// user.Groups = bson.TypeArray
 
 	inserted, err := collection.InsertOne(context.TODO(), user)
 	if err != nil {
@@ -157,20 +160,6 @@ func UpdateUserPassword(id string, password string) error {
 	return err
 }
 
-func UpdateUserOnline(user User) error {
-	collection := global.MongoClient.Database(database).Collection(collectionName)
-
-	i, _ := bson.ObjectIDFromHex(user.ID.Hex())
-	filter := bson.D{{"_id", i}}
-	update := bson.D{{"$set", bson.D{{"online", user.Online}}}}
-
-	_, err := collection.UpdateOne(context.TODO(), filter, update)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to update user")
-	}
-	return err
-}
-
 func DeleteUser(id string) error {
 	collection := global.MongoClient.Database(database).Collection(collectionName)
 
@@ -180,6 +169,20 @@ func DeleteUser(id string) error {
 	_, err := collection.DeleteOne(context.TODO(), filter)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to delete user")
+	}
+	return err
+}
+
+func CreateUserContact(userID string, contactID string) error {
+	collection := global.MongoClient.Database(database).Collection(collectionName)
+
+	i, _ := bson.ObjectIDFromHex(userID)
+	filter := bson.D{{"_id", i}}
+	update := bson.D{{"$push", bson.D{{"contacts", contactID}}}}
+
+	_, err := collection.UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to add user contact")
 	}
 	return err
 }

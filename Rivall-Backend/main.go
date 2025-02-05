@@ -69,6 +69,7 @@ func DisconnectMongoDB(MongoClient *mongo.Client) {
 var Logger *zerolog.Logger
 var Validator *validator.Validate
 var MongoClient *mongo.Client
+var JWTSecretKey string
 
 func main() {
 	// Initialize logger, validator, and config
@@ -92,6 +93,7 @@ func main() {
 	global.Logger = l
 	global.Validator = v
 	global.MongoClient = MongoClient
+	global.JWTSecretKey = c.Server.JWTSecretKey
 
 	// Initialize server
 	s := &http.Server{

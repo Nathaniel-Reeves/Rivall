@@ -7,7 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"Rivall-Backend/api/global"
-	auth "Rivall-Backend/api/resources/auth"
+	"Rivall-Backend/api/resources/users"
 )
 
 /*
@@ -25,7 +25,7 @@ const collectionName string = "MessageGroups"
 
 type MessageGroup struct {
 	ID          bson.ObjectID `json:"_id"           bson:"_id"`
-	Users       []auth.User   `json:"users"         bson:"users"`
+	Users       []users.User  `json:"users"         bson:"users"`
 	LastMessage Message       `json:"last_message"  bson:"last_message"`
 	Messages    []Message     `json:"messages"      bson:"messages"`
 	GroupName   string        `json:"group_name"    bson:"group_name"`
@@ -44,13 +44,13 @@ Message struct represents a message in the system
 
 type Message struct {
 	ID          bson.ObjectID `json:"_id"           bson:"_id"`
-	User        auth.User     `json:"user"          bson:"user"`
+	User        users.User    `json:"user"          bson:"user"`
 	MessageData string        `json:"message_data"  bson:"message_data"`
 	Timestamp   string        `json:"timestamp"     bson:"timestamp"`
 	MessageType string        `json:"message_type"  bson:"message_type"`
 }
 
-func CreateMessageGroup(user auth.User, messageGroup MessageGroup) error {
+func CreateMessageGroup(user users.User, messageGroup MessageGroup) error {
 	collection := global.MongoClient.Database(database).Collection(collectionName)
 
 	messageGroup.Users = append(messageGroup.Users, user)
@@ -65,7 +65,7 @@ func CreateMessageGroup(user auth.User, messageGroup MessageGroup) error {
 	return nil
 }
 
-func AddMessageGroupToUsers(user auth.User, messageGroup MessageGroup) error {
+func AddMessageGroupToUsers(user users.User, messageGroup MessageGroup) error {
 	collection := global.MongoClient.Database(database).Collection(collectionName)
 
 	_, err := collection.UpdateMany(

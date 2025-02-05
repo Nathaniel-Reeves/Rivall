@@ -1,7 +1,7 @@
 package messagegroup
 
 import (
-	user "Rivall-Backend/api/resources/auth"
+	users "Rivall-Backend/api/resources/users"
 	"encoding/json"
 	"net/http"
 
@@ -39,7 +39,7 @@ func PostNewMessageGroup(w http.ResponseWriter, r *http.Request) {
 	if len(messageGroup.Users) == 0 {
 		log.Error().Msg("Message group must have at least one user")
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Message group must have at least one user."))
+		w.Write([]byte("Message group must have at least one users."))
 		return
 	}
 
@@ -55,12 +55,12 @@ func PostNewMessageGroup(w http.ResponseWriter, r *http.Request) {
 	if !found {
 		log.Error().Msg("Message group must have the logged in user")
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Message group must have the logged in user."))
+		w.Write([]byte("Message group must have the logged in users."))
 		return
 	}
 
 	// create message group
-	user := user.User{}
+	user := users.User{}
 	user.ID, err = bson.ObjectIDFromHex(userID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get user ID")

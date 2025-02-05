@@ -27,6 +27,7 @@ type ConfServer struct {
 	TimeoutWrite time.Duration `env:"SERVER_TIMEOUT_WRITE,required"`
 	TimeoutIdle  time.Duration `env:"SERVER_TIMEOUT_IDLE,required"`
 	Debug        bool          `env:"SERVER_DEBUG,required"`
+	JWTSecretKey string        `env:"JWT_SECRET_KEY,required"`
 }
 
 type ConfDB struct {

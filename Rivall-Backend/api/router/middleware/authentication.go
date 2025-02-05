@@ -6,14 +6,19 @@ import (
 	"net/http"
 	"strings"
 
+	"Rivall-Backend/api/global"
+
 	"github.com/dgrijalva/jwt-go"
+	"github.com/rs/zerolog/log"
 )
 
 func AuthenticationMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Debug().Msg("AuthenticationMiddleware")
 		tokenString := r.Header.Get("Authorization")
 		if tokenString == "" {
 			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Missing Authorization header"))
 			return
 		}
 
@@ -23,7 +28,7 @@ func AuthenticationMiddleware(next http.Handler) http.Handler {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method")
 			}
-			return []byte("secret"), nil
+			return []byte(global.JWTSecretKey), nil
 		})
 
 		if err != nil {
