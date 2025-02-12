@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"Rivall-Backend/api/global"
+	globals "Rivall-Backend/api/global"
 	users "Rivall-Backend/api/resources/users"
 )
 
@@ -32,36 +33,30 @@ func getUserIDFromContext(ctx context.Context) (string, error) {
 	return userID, nil
 }
 
-// Test Authorization
-//
-//	@summary		Test Authorization
-//	@description	Test Authorization
-//	@tags			users
-//	@accept			json
-//	@produce		json
-//	@success		200	{object}	DTO
-//	@failure		400	{object}	err.Error
-//	@failure		404
-//	@failure		500	{object}	err.Error
-//	@router			/auth/authorize [get]
-func TestAuthorization(w http.ResponseWriter, r *http.Request) {
-	log.Debug().Msg("User is Authorized")
-	w.Write([]byte("Users is Authorized"))
+func TestAuthorization(w http.ResponseWriter, r *http.Request) bool {
+	log.Info().Msg("GET test authorization")
+
+	// get user id from context
+	userID, err := getUserIDFromContext(r.Context())
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get user ID from context")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to get user ID from context"))
+		return false
+	}
+
+	// get user from db
+	user := users.ReadByUserEmail(userID)
+	if user.ID == bson.NilObjectID {
+		log.Warn().Msg("User not found")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("User not found"))
+		return false
+	}
+
+	return true
 }
 
-// Register New User
-//
-//	@summary		Create User
-//	@description	Create a User in the database
-//	@tags			users
-//	@accept			json
-//	@produce		json
-//	@param			id	path		string	true	"user ID"
-//	@success		200	{object}	DTO
-//	@failure		400	{object}	err.Error
-//	@failure		404
-//	@failure		500	{object}	err.Error
-//	@router			/auth/register [post]
 func RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("POST new user")
 
@@ -84,7 +79,7 @@ func RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// check user does not already exist
-	if users.ReadEmail(user.Email).ID != bson.NilObjectID {
+	if users.ReadByUserEmail(user.Email).ID != bson.NilObjectID {
 		log.Error().Msg("User already exists")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("User already exists."))
@@ -104,19 +99,6 @@ func RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-// Login User
-//
-//	@summary		Login User
-//	@description	Log in a User
-//	@tags			users
-//	@accept			json
-//	@produce		json
-//	@param			id	path		string	true	"user ID"
-//	@success		200	{object}	DTO
-//	@failure		400	{object}	err.Error
-//	@failure		404
-//	@failure		500	{object}	err.Error
-//	@router			/auth/login [post]
 func LoginUser(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("GET user by username")
 
@@ -131,7 +113,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get user from db
-	user := users.ReadEmail(userLogin.Email)
+	user := users.ReadByUserEmail(userLogin.Email)
 	if user.ID == bson.NilObjectID {
 		log.Warn().Msg("User not found")
 		w.WriteHeader(http.StatusNotFound)
@@ -147,6 +129,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// create token
 	token, err := createToken(user)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create token")
@@ -154,26 +137,21 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Failed to create token"))
 		return
 	}
-
 	w.Header().Set("Authorization", token)
+
+	// Create OTP for websocket
+	w, err = globals.WSManager.LoginHandler(w)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create OTP")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to create OTP"))
+		return
+	}
 
 	// return user
 	json.NewEncoder(w).Encode(user)
 }
 
-// Logout User
-//
-//	@summary		Logout User
-//	@description	Log out a User
-//	@tags			users
-//	@accept			json
-//	@produce		json
-//	@param			id	path		string	true	"user ID"
-//	@success		200	{object}	DTO
-//	@failure		400	{object}	err.Error
-//	@failure		404
-//	@failure		500	{object}	err.Error
-//	@router			/auth/logout [delete]
 func LogoutUser(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("DELETE user login session")
 	// Remember to delete the authorization token from the client side after this request
@@ -188,7 +166,7 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get user from db
-	user := users.ReadId(userID)
+	user := users.ReadByUserEmail(userID)
 	if user.ID == bson.NilObjectID {
 		log.Warn().Msg("User not found")
 		w.WriteHeader(http.StatusNotFound)
@@ -199,4 +177,6 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 	// remove token from header
 	w.Header().Set("Authorization", "")
 	w.WriteHeader(http.StatusOK)
+
+	// The websocket connection will be closed via timeout
 }

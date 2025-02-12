@@ -9,19 +9,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-// Post User Contact
-//
-//	@summary		Create User Contact
-//	@description	Create a User Contact in the database
-//	@tags			users
-//	@accept			json
-//	@produce		json
-//	@param			id	path		string	true	"user ID"
-//	@success		200	{object}	DTO
-//	@failure		400	{object}	err.Error
-//	@failure		404
-//	@failure		500	{object}	err.Error
-//	@router			/users/{user_id}/contacts/{contact_id} [post]
 func PostUserContact(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("POST user contact")
 
@@ -30,26 +17,52 @@ func PostUserContact(w http.ResponseWriter, r *http.Request) {
 	userID := vars["user_id"]
 
 	// Check the user exists
-	if ReadId(userID).ID == bson.NilObjectID {
+	if ReadByUserId(userID).ID == bson.NilObjectID {
 		log.Error().Msg("User does not exist")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("User does not exist."))
 		return
 	}
 
-	// get contact id from url parameters
+	// get contact id from content body
+	vars = make(map[string]string)
+	err := json.NewDecoder(r.Body).Decode(&vars)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to decode contact ID, invalid JSON request")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Failed to decode contact ID, invalid JSON request."))
+		return
+	}
 	contactID := vars["contact_id"]
 
 	// check the contact exists
-	if ReadId(contactID).ID == bson.NilObjectID {
+	if ReadByUserId(contactID).ID == bson.NilObjectID {
 		log.Error().Msg("Contact does not exist")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Contact does not exist."))
 		return
 	}
 
+	// check if user already has this contact
+	contacts := ReadByUserId(userID).ContactIDs
+	for _, contact := range contacts {
+		id, err := bson.ObjectIDFromHex(contactID)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to convert contact ID")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Failed to convert contact ID."))
+			return
+		}
+		if contact == id {
+			log.Error().Msg("User already has this contact")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("User already has this contact."))
+			return
+		}
+	}
+
 	// create user contact with new contact
-	err := CreateUserContact(userID, contactID)
+	err = CreateUserContact(userID, contactID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to set user contact")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -58,19 +71,36 @@ func PostUserContact(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Get User
-//
-//	@summary		Get User
-//	@description	Get a User from the database
-//	@tags			users
-//	@accept			json
-//	@produce		json
-//	@param			id	path		string	true	"user ID"
-//	@success		200	{object}	DTO
-//	@failure		400	{object}	err.Error
-//	@failure		404
-//	@failure		500	{object}	err.Error
-//	@router			/users/{user_id} [get]
+func DeleteUserContact(w http.ResponseWriter, r *http.Request) {
+	log.Info().Msg("DELETE user contact")
+
+	// get user id from url parameters
+	vars := mux.Vars(r)
+	userID := vars["user_id"]
+	log.Debug().Msgf("User ID: %s", userID)
+
+	// get contact id from content body
+	vars = make(map[string]string)
+	err := json.NewDecoder(r.Body).Decode(&vars)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to decode contact ID, invalid JSON request")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Failed to decode contact ID, invalid JSON request."))
+		return
+	}
+
+	// delete user contact
+	err = RemoveUserContact(userID, vars["contact_id"])
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to delete user contact")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to delete user contact."))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func GetUser(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("GET user")
 
@@ -80,7 +110,7 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("User ID: %s", userID)
 
 	// check user exists
-	user := ReadId(userID)
+	user := ReadByUserId(userID)
 	if user.ID == bson.NilObjectID {
 		log.Error().Msg("User does not exist")
 		w.WriteHeader(http.StatusBadRequest)
@@ -90,37 +120,4 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 
 	// return user
 	json.NewEncoder(w).Encode(user)
-}
-
-// Get User Contacts
-//
-//	@summary		Get User Contacts
-//	@description	Get a User's contacts from the database
-//	@tags			users
-//	@accept			json
-//	@produce		json
-//	@param			id	path		string	true	"user ID"
-//	@success		200	{object}	DTO
-//	@failure		400	{object}	err.Error
-//	@failure		404
-//	@failure		500	{object}	err.Error
-//	@router			/users/{user_id}/contacts [get]
-func GetUserPopulateContacts(w http.ResponseWriter, r *http.Request) {
-	log.Info().Msg("GET user contacts")
-
-	// get user id from url parameters
-	vars := mux.Vars(r)
-	userID := vars["id"]
-
-	// check user exists
-	user := ReadIdPopulateContacts(userID)
-	if user.ID == bson.NilObjectID {
-		log.Error().Msg("User does not exist")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("User does not exist."))
-		return
-	}
-
-	// return user contacts
-	json.NewEncoder(w).Encode(user.Contacts)
 }

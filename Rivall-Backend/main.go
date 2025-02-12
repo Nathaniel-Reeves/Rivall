@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"Rivall-Backend/api/resources/websocket"
 	"Rivall-Backend/api/router"
 	"Rivall-Backend/config"
 	"Rivall-Backend/util/logger"
@@ -29,13 +30,10 @@ import (
 //	@contact.name	Nathaniel Reeves
 //	@contact.url
 
-//	@license.name	Apache License Version 2.0, January 2004
-//	@license.url	http://www.apache.org/licenses/
-
 // @host		localhost:8080
 // @basePath	/v1
 
-func ConnectMongoDB(c *config.Conf) *mongo.Client {
+func ConnectMongoDB(ctx context.Context, c *config.Conf) *mongo.Client {
 	// Connect to MongoDB
 	var uri string = c.DB.MongoURI
 	if uri == "" {
@@ -51,7 +49,7 @@ func ConnectMongoDB(c *config.Conf) *mongo.Client {
 
 	// Send a ping to confirm a successful connection
 	var result bson.M
-	if err := MongoClient.Database("admin").RunCommand(context.TODO(), bson.D{{"ping", 1}}).Decode(&result); err != nil {
+	if err := MongoClient.Database("admin").RunCommand(ctx, bson.D{{"ping", 1}}).Decode(&result); err != nil {
 		log.Fatal().Err(err).Msg("Failed to ping MongoDB")
 		panic(err)
 	}
@@ -79,8 +77,14 @@ func main() {
 	v := validator.New()
 	log.Info().Msg("Building Rivall Backend API...")
 
+	// Initialize context
+	ctx := context.Background()
+
 	// Connect MongoDB
-	MongoClient := ConnectMongoDB(c)
+	MongoClient := ConnectMongoDB(ctx, c)
+
+	// Setup Websocket Management
+	WSManager := websocket.NewManager(ctx)
 
 	// Initialize global variables
 	Logger = l
@@ -93,6 +97,7 @@ func main() {
 	global.Logger = l
 	global.Validator = v
 	global.MongoClient = MongoClient
+	global.WSManager = WSManager
 	global.JWTSecretKey = c.Server.JWTSecretKey
 
 	// Initialize server
