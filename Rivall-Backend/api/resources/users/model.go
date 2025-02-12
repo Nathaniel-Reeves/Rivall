@@ -33,10 +33,11 @@ type User struct {
 	FirstName   string          `json:"first_name"    bson:"first_name"`
 	LastName    string          `json:"last_name"     bson:"last_name"`
 	Email       string          `json:"email"         bson:"email"`
-	Password    string          `json:"password"      bson:"password"`
+	Password    string          `json:"password" bson:"password"`
 	AvatarImage string          `json:"avatar_image"  bson:"avatar_image"`
-	GroupIDs    []bson.ObjectID `json:"group_ids"     bson:"groups_ids"`
-	ContactIDs  []bson.ObjectID `json:"contact_ids"   bson:"contact_ids"`
+	GroupIDs    []bson.ObjectID `bson:"groups_ids"`
+	ContactIDs  []bson.ObjectID `bson:"contact_ids"`
+	OTP         string          `json:"otp"`
 	// Contacts are not stored on the database, they are fetched from the contact_ids
 	Contacts             []Contact             `json:"contacts"      bson:"omitempty"`
 	MessageGroupRequests []MessageGroupRequest `json:"message_group_request_ids" bson:"message_group_request_ids"`

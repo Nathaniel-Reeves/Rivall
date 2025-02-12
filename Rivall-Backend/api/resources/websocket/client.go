@@ -2,10 +2,10 @@ package websocket
 
 import (
 	"encoding/json"
-	"log"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog/log"
 )
 
 // ClientList is a map used to help manage a map of clients
@@ -56,7 +56,7 @@ func (c *Client) readMessages() {
 	// Configure Wait time for Pong response, use Current time + pongWait
 	// This has to be done here to set the first initial timer.
 	if err := c.connection.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
-		log.Println(err)
+		log.Err(err).Msg("error setting read deadline")
 		return
 	}
 	// Configure how to handle Pong responses
@@ -72,19 +72,19 @@ func (c *Client) readMessages() {
 			// If Connection is closed, we will Recieve an error here
 			// We only want to log Strange errors, but simple Disconnection
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error reading message: %v", err)
+				log.Err(err).Msg("error reading message")
 			}
 			break // Break the loop to close conn & Cleanup
 		}
 		// Marshal incoming data into a Event struct
 		var request Event
 		if err := json.Unmarshal(payload, &request); err != nil {
-			log.Printf("error marshalling message: %v", err)
+			log.Err(err).Msg("error unmarshaling message")
 			break // Breaking the connection here might be harsh xD
 		}
 		// Route the Event
 		if err := c.manager.routeEvent(request, c); err != nil {
-			log.Println("Error handeling Message: ", err)
+			log.Err(err).Msg("error routing event")
 		}
 	}
 }
@@ -92,7 +92,7 @@ func (c *Client) readMessages() {
 // pongHandler is used to handle PongMessages for the Client
 func (c *Client) pongHandler(pongMsg string) error {
 	// Current time + Pong Wait time
-	log.Println("pong")
+	log.Debug().Msg("pong")
 	return c.connection.SetReadDeadline(time.Now().Add(pongWait))
 }
 
@@ -114,7 +114,7 @@ func (c *Client) writeMessages() {
 				// Manager has closed this connection channel, so communicate that to frontend
 				if err := c.connection.WriteMessage(websocket.CloseMessage, nil); err != nil {
 					// Log that the connection is closed and the reason
-					log.Println("connection closed: ", err)
+					log.Err(err).Msg("error writing close message")
 				}
 				// Return to close the goroutine
 				return
@@ -122,19 +122,19 @@ func (c *Client) writeMessages() {
 
 			data, err := json.Marshal(message)
 			if err != nil {
-				log.Println(err)
+				log.Err(err).Msg("error marshaling message")
 				return // closes the connection, should we really
 			}
 			// Write a Regular text message to the connection
 			if err := c.connection.WriteMessage(websocket.TextMessage, data); err != nil {
-				log.Println(err)
+				log.Err(err).Msg("error writing message")
 			}
-			log.Println("sent message")
+			log.Debug().Msg("message sent")
 		case <-ticker.C:
-			log.Println("ping")
+			log.Debug().Msg("ping")
 			// Send the Ping
 			if err := c.connection.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-				log.Println("writemsg: ", err)
+				log.Info().Msg("ping failed")
 				return // return to break this goroutine triggeing cleanup
 			}
 		}

@@ -87,19 +87,15 @@ func main() {
 	// Setup Websocket Management
 	WSManager := websocket.NewManager(ctx)
 
-	// Initialize global variables
-	Logger = l
-	Validator = v
-
-	// Initialize router
-	r := router.New()
-
 	// Inject global variables
 	global.Logger = l
 	global.Validator = v
 	global.MongoClient = MongoClient
 	global.WSManager = WSManager
 	global.JWTSecretKey = c.Server.JWTSecretKey
+
+	// Initialize router
+	r := router.New()
 
 	// Initialize server
 	cfg := &tls.Config{

@@ -17,9 +17,6 @@ import (
 func New() *mux.Router {
 	r := mux.NewRouter()
 
-	// Add https (secure) middleware
-	r.Use(middleware.SecureConnection)
-
 	// Add health routes
 	r.HandleFunc("/health", health.Read).Methods(http.MethodGet)
 
@@ -28,22 +25,23 @@ func New() *mux.Router {
 	publicRouter.HandleFunc("/auth/register", auth.RegisterNewUser).Methods(http.MethodPost)
 	publicRouter.HandleFunc("/auth/login", auth.LoginUser).Methods(http.MethodPost)
 
-	privateRouter := r.PathPrefix("/api/v1/ws").Subrouter()
-	privateRouter.Use(middleware.AuthenticationMiddleware)
-	privateRouter.HandleFunc("/", globals.WSManager.ServeWS)
-	privateRouter.HandleFunc("/auth/logout", auth.LogoutUser).Methods(http.MethodDelete)
-	privateRouter.HandleFunc("/users/{user_id}", users.GetUser).Methods(http.MethodGet)
-	privateRouter.HandleFunc("/users/{user_id}/contacts", users.PostUserContact).Methods(http.MethodPost)
-	privateRouter.HandleFunc("/users/{user_id}/contacts", users.DeleteUserContact).Methods(http.MethodDelete)
+	privateWSRouter := r.PathPrefix("/api/v1/ws").Subrouter()
+	privateWSRouter.Use(middleware.AuthenticationMiddleware)
 
-	privateRouter.HandleFunc("/message-group", messagegroup.WriteNewMessageGroup).Methods(http.MethodPost)
-	privateRouter.HandleFunc("/message-group/{group_id}/user-request", messagegroup.AcceptGroupRequest).Methods(http.MethodPut)
-	privateRouter.HandleFunc("/message-group/{group_id}/user-request", messagegroup.RejectGroupRequest).Methods(http.MethodDelete)
+	privateWSRouter.HandleFunc("/connect", globals.WSManager.ServeWS)
+	privateWSRouter.HandleFunc("/auth/logout", auth.LogoutUser).Methods(http.MethodDelete)
+	privateWSRouter.HandleFunc("/users/{user_id}", users.GetUser).Methods(http.MethodGet)
+	privateWSRouter.HandleFunc("/users/{user_id}/contacts", users.PostUserContact).Methods(http.MethodPost)
+	privateWSRouter.HandleFunc("/users/{user_id}/contacts", users.DeleteUserContact).Methods(http.MethodDelete)
+	privateWSRouter.HandleFunc("/message-group", messagegroup.WriteNewMessageGroup).Methods(http.MethodPost)
+	privateWSRouter.HandleFunc("/message-group/{group_id}/user-request", messagegroup.AcceptGroupRequest).Methods(http.MethodPut)
+	privateWSRouter.HandleFunc("/message-group/{group_id}/user-request", messagegroup.RejectGroupRequest).Methods(http.MethodDelete)
 
 	// Add middleware
 	r.Use(middleware.RequestID)
 	r.Use(middleware.ContentTypeJSON)
 	r.Use(middleware.RequestLogging)
+	r.Use(middleware.SecureConnection)
 
 	return r
 }

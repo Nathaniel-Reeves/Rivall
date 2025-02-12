@@ -2,14 +2,13 @@ package websocket
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -33,6 +32,8 @@ func checkOrigin(r *http.Request) bool {
 
 	// Grab the request origin
 	origin := r.Header.Get("Origin")
+
+	log.Debug().Msgf("Checking Origin: %s", origin)
 
 	switch origin {
 	// Update this to HTTPS
@@ -58,6 +59,7 @@ type Manager struct {
 
 // NewManager is used to initalize all the values inside the manager
 func NewManager(ctx context.Context) *Manager {
+	log.Info().Msg("Creating new Websocket Manager")
 	m := &Manager{
 		clients:  make(ClientList),
 		handlers: make(map[string]EventHandler),
@@ -65,6 +67,7 @@ func NewManager(ctx context.Context) *Manager {
 		otps: NewRetentionMap(ctx, 5*time.Second),
 	}
 	m.setupEventHandlers()
+	log.Info().Msg("Websocket Manager Created")
 	return m
 }
 
@@ -89,33 +92,18 @@ func (m *Manager) routeEvent(event Event, c *Client) error {
 }
 
 // loginHandler is used to verify an user authentication and return a one time password
-func (m *Manager) LoginHandler(w http.ResponseWriter) (http.ResponseWriter, error) {
-
-	// format to return otp in to the frontend
-	type response struct {
-		OTP string `json:"otp"`
-	}
+func (m *Manager) CreateOTP() string {
 
 	// add a new OTP
 	otp := m.otps.NewOTP()
 
-	resp := response{
-		OTP: otp.Key,
-	}
-
-	data, err := json.Marshal(resp)
-	if err != nil {
-		log.Println(err)
-		return w, err
-	}
-	// Return a response to the Authenticated user with the OTP
-	w.WriteHeader(http.StatusOK)
-	w.Write(data)
-	return w, nil
+	return otp.Key
 }
 
 // serveWS is a HTTP Handler that the has the Manager that allows connections
 func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request) {
+
+	log.Debug().Msg("Serving Websocket Connection")
 
 	// Grab the OTP in the Get param
 	otp := r.URL.Query().Get("otp")
@@ -126,16 +114,18 @@ func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify OTP is existing
+	log.Debug().Msgf("Verifying OTP: %s", otp)
 	if !m.otps.VerifyOTP(otp) {
 		w.WriteHeader(http.StatusUnauthorized)
+		log.Info().Msg("Unauthorized Connection")
 		return
 	}
 
-	log.Println("New connection")
 	// Begin by upgrading the HTTP request
+	log.Info().Msg("Upgrading to Websocket Connection")
 	conn, err := websocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		log.Err(err).Msg("Failed to upgrade connection to websocket")
 		return
 	}
 
@@ -143,6 +133,7 @@ func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request) {
 	client := NewClient(conn, m)
 	// Add the newly created client to the manager
 	m.addClient(client)
+	log.Debug().Msg("Client Added to Manager")
 
 	go client.readMessages()
 	go client.writeMessages()

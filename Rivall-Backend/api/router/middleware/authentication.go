@@ -54,6 +54,7 @@ func AuthenticationMiddleware(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), "user_id", userID)
+		log.Debug().Str("user_id", userID).Msg("Authenticated user")
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

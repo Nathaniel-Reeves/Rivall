@@ -42,6 +42,7 @@ func (rm RetentionMap) NewOTP() OTP {
 // and return true if so
 // It will also delete the key so it cant be reused
 func (rm RetentionMap) VerifyOTP(otp string) bool {
+
 	// Verify OTP is existing
 	if _, ok := rm[otp]; !ok {
 		// otp does not exist

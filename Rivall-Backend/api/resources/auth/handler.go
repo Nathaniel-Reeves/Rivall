@@ -33,30 +33,6 @@ func getUserIDFromContext(ctx context.Context) (string, error) {
 	return userID, nil
 }
 
-func TestAuthorization(w http.ResponseWriter, r *http.Request) bool {
-	log.Info().Msg("GET test authorization")
-
-	// get user id from context
-	userID, err := getUserIDFromContext(r.Context())
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get user ID from context")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to get user ID from context"))
-		return false
-	}
-
-	// get user from db
-	user := users.ReadByUserEmail(userID)
-	if user.ID == bson.NilObjectID {
-		log.Warn().Msg("User not found")
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("User not found"))
-		return false
-	}
-
-	return true
-}
-
 func RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("POST new user")
 
@@ -140,16 +116,27 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Authorization", token)
 
 	// Create OTP for websocket
-	w, err = globals.WSManager.LoginHandler(w)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to create OTP")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to create OTP"))
-		return
+	user.OTP = globals.WSManager.CreateOTP()
+
+	// Clean Response Data
+	type sendUser struct {
+		ID        string `json:"id" bson:"_id,omitempty"`
+		FirstName string `json:"first_name" bson:"first_name"`
+		LastName  string `json:"last_name" bson:"last_name"`
+		Email     string `json:"email" bson:"email"`
+		OTP       string `json:"otp" bson:"otp"`
+	}
+
+	su := sendUser{
+		ID:        user.ID.Hex(),
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
+		OTP:       user.OTP,
 	}
 
 	// return user
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(su)
 }
 
 func LogoutUser(w http.ResponseWriter, r *http.Request) {

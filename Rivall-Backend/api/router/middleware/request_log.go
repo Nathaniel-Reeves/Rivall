@@ -40,6 +40,12 @@ func RequestLogging(next http.Handler) http.Handler {
 
 		msg := "<-- " + s + " REQUEST " + r.URL.Path
 
+		// If the request is an upgrade to websocket request, skip logging
+		if r.Header.Get("Upgrade") == "websocket" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Log the request address, method, path, and headers
 		log.Info().
 			// Str("headers", r.Header.Get("Content-Type")).
