@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"os"
@@ -91,7 +92,7 @@ func main() {
 	Validator = v
 
 	// Initialize router
-	r := router.New(l, v, MongoClient)
+	r := router.New()
 
 	// Inject global variables
 	global.Logger = l
@@ -101,12 +102,25 @@ func main() {
 	global.JWTSecretKey = c.Server.JWTSecretKey
 
 	// Initialize server
+	cfg := &tls.Config{
+		MinVersion:               tls.VersionTLS12,
+		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+		PreferServerCipherSuites: true,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+		},
+	}
 	s := &http.Server{
 		Addr:         fmt.Sprintf(":%d", c.Server.Port),
 		Handler:      r,
 		ReadTimeout:  c.Server.TimeoutRead,
 		WriteTimeout: c.Server.TimeoutWrite,
 		IdleTimeout:  c.Server.TimeoutIdle,
+		TLSConfig:    cfg,
+		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 	}
 
 	// Graceful shutdown functionality
@@ -132,7 +146,7 @@ func main() {
 
 	// Start server
 	log.Info().Msgf("Starting server %v:%v", c.Server.Address, c.Server.Port)
-	if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := s.ListenAndServeTLS("server.crt", "server.key"); err != nil && err != http.ErrServerClosed {
 		log.Fatal().Err(err).Msg("Server startup failure")
 	}
 

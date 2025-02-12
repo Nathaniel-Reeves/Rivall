@@ -17,6 +17,9 @@ import (
 func New() *mux.Router {
 	r := mux.NewRouter()
 
+	// Add https (secure) middleware
+	r.Use(middleware.SecureConnection)
+
 	// Add health routes
 	r.HandleFunc("/health", health.Read).Methods(http.MethodGet)
 
