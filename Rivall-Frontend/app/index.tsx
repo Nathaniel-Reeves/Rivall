@@ -1,53 +1,61 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, FlatList, useWindowDimensions } from 'react-native';
-import { useBreakpointValue } from '@/components/ui/utils/use-break-point-value';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-import ProductListItem from '@/components/ProductListItem';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from '@/components/ui/image';
+import { Box } from '@/components/ui/box';
+import { Text } from '@/components/ui/text';
+import { Spinner } from '@/components/ui/spinner';
+import colors from "tailwindcss/colors"
+import WelcomeScreen from './welcome';
 
-import products from '@/assets/products.json';
-import { getUser } from '@/api/auth';
+function HomeScreen() {
+  return (
+    <LinearGradient
+      // Vertical Background Linear Gradient
+      colors={['#77FBFF', '#26C1FE']}
+      start={[0, 0]}
+      end={[0, 1]}
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        height: '100%',
+      }}
+    >
+      <Box className="flex-1 justify-center w-80 mx-auto">
+        <Image
+          source={require('@/assets/icon.png')}
+          className="shadow-md shadow-black w-[236px] h-[236px] justify-center mx-auto mb-10 rounded-[42px]"
+          alt="Rivall Logo"
+        />
+        <Text className="text-typography-800 text-2xl font-medium text-pretty text-center mb-20">Where Rivalls' Become Campions</Text>
+        <Spinner size="large" color={colors.gray[700]} />
+      </Box>
+    </LinearGradient>
+  )
+}
 
-export default function HomeScreen() {
+export default function App() {
 
-  // const [ user, setUser ] = useState(null);
+  const [ isLoggedIn, setIsLoggedIn ] = useState<boolean | null>(null);
 
-  // useEffect(() => {
-  //   console.log('HomeScreen mounted');
-    
-  //   const fetchUser = async () => {
-  //     const user = await getUser();
-  //     setUser(user);
-  //   };
-  //   fetchUser();
-  // }, []);
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setIsLoggedIn(false);
+    }, 5000);
+    return () => clearTimeout(timeoutId);
+  }, []);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['user'],
-    queryFn: getUser
-  });
-
-  // const { width } = useWindowDimensions();
-  // const numColumns = width > 768 ? 3 : 2; // re-renders on screen width change
-
-  const numColumns = useBreakpointValue({ // uses breakpoints from tailwind.config.js
-    default: 2,
-    sm: 3,
-    md: 4,
-  });
-
-  if (isLoading) return <Text>Loading...</Text>;
-  if (error) return <Text>Error: {error.message}</Text>;
+  // const { data, isLoading, error } = useQuery({
+  //   queryKey: ['user'],
+  //   queryFn: getUser
+  // });
 
   return (
-    <FlatList
-      key={numColumns}
-      data={products}
-      renderItem={({ item }) => (<ProductListItem product={item} />)}
-      numColumns={numColumns}
-      contentContainerClassName="gap-2 max-w-[960px] mx-auto w-full p-3"
-      columnWrapperClassName="gap-2"
-    />
-  );
+    <>
+      {isLoggedIn == false ? <WelcomeScreen/> : <HomeScreen/>}
+    </>
+  )
 }
