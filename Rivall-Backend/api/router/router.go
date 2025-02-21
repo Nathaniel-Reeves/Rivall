@@ -25,6 +25,10 @@ func New() *mux.Router {
 	publicRouter.HandleFunc("/auth/register", auth.RegisterNewUser).Methods(http.MethodPost)
 	publicRouter.HandleFunc("/auth/login", auth.LoginUser).Methods(http.MethodPost)
 
+	privateRouter := r.PathPrefix("/api/v1").Subrouter()
+	privateRouter.Use(middleware.AuthenticationMiddleware)
+	privateRouter.HandleFunc("/users/{user_id}", users.GetUser).Methods(http.MethodGet)
+
 	privateWSRouter := r.PathPrefix("/api/v1/ws").Subrouter()
 	privateWSRouter.Use(middleware.AuthenticationMiddleware)
 

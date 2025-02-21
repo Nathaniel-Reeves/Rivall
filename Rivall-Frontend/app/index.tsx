@@ -1,61 +1,72 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from '@/components/ui/image';
 import { Box } from '@/components/ui/box';
 import { Text } from '@/components/ui/text';
 import { Spinner } from '@/components/ui/spinner';
 import colors from "tailwindcss/colors"
-import WelcomeScreen from './welcome';
+import { Redirect } from 'expo-router';
+
+import WelcomeScreen from './(auth)/welcome';
+import StartupErrorScreen from './(auth)/startup_error';
+import { getUser } from '@/api/user';
+import { useCredentials } from '@/global-store/credential_store';
 
 function HomeScreen() {
   return (
-    <LinearGradient
-      // Vertical Background Linear Gradient
-      colors={['#77FBFF', '#26C1FE']}
-      start={[0, 0]}
-      end={[0, 1]}
-      style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 0,
-        height: '100%',
-      }}
-    >
-      <Box className="flex-1 justify-center w-80 mx-auto">
-        <Image
-          source={require('@/assets/icon.png')}
-          className="shadow-md shadow-black w-[236px] h-[236px] justify-center mx-auto mb-10 rounded-[42px]"
-          alt="Rivall Logo"
-        />
-        <Text className="text-typography-800 text-2xl font-medium text-pretty text-center mb-20">Where Rivalls' Become Campions</Text>
-        <Spinner size="large" color={colors.gray[700]} />
-      </Box>
-    </LinearGradient>
+    <Box className="flex-1 justify-center w-80 mx-auto">
+      <Image
+        source={require('@/assets/icon.png')}
+        className="shadow-md shadow-black w-[236px] h-[236px] justify-center mx-auto mb-10 rounded-[42px]"
+        alt="Rivall Logo"
+      />
+      <Text className="text-typography-800 text-2xl font-medium text-pretty text-center mb-20">Where Rivalls' Become Campions</Text>
+      <Spinner size="large" color={colors.gray[700]} />
+    </Box>
   )
 }
 
 export default function App() {
 
-  const [ isLoggedIn, setIsLoggedIn ] = useState<boolean | null>(null);
+  // Check if storeage has user id and token
+  const { userID, token } = useCredentials((state: any) => state.credentials);
+  if (userID == '' || token == '') {
+    console.debug('No user id or token')
+    return (
+      <WelcomeScreen/> // Redirect user to login or register
+    )
+  }
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setIsLoggedIn(false);
-    }, 5000);
-    return () => clearTimeout(timeoutId);
-  }, []);
+  // Get User Data using auth token
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['getUser', 'Startup'],
+    queryFn: () => getUser(userID, token),
+    retryDelay: attempt => Math.min(attempt > 1 ? 2 ** attempt * 1000 : 1000, 30 * 1000),
+  });
 
-  // const { data, isLoading, error } = useQuery({
-  //   queryKey: ['user'],
-  //   queryFn: getUser
-  // });
+  if (isLoading) {
+    return (
+      <HomeScreen/>
+    )
+  }
 
+  if (error) {
+    // TODO: make login error screen
+    console.error(error)
+    return (
+      <StartupErrorScreen/>
+    )
+  }
+
+  if (data?._id == undefined) {
+    return (
+      <WelcomeScreen/> // Redirect user to login or register
+    )
+  }
+
+  // Redirect user to home screen
   return (
-    <>
-      {isLoggedIn == false ? <WelcomeScreen/> : <HomeScreen/>}
-    </>
+    <Redirect href="/entry"/>
   )
 }

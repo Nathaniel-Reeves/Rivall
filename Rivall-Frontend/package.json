@@ -37,6 +37,7 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.6",
+    "react-native-cert-pinner": "^0.4.1",
     "react-native-css-interop": "^0.1.22",
     "react-native-reanimated": "^3.16.7",
     "react-native-safe-area-context": "^5.1.0",

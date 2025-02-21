@@ -125,6 +125,8 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		LastName  string `json:"last_name" bson:"last_name"`
 		Email     string `json:"email" bson:"email"`
 		OTP       string `json:"otp" bson:"otp"`
+		Token     string `json:"token" bson:"token"`
+		LoggedIn  bool   `json:"logged_in" bson:"logged_in"`
 	}
 
 	su := sendUser{
@@ -133,6 +135,8 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		LastName:  user.LastName,
 		Email:     user.Email,
 		OTP:       user.OTP,
+		Token:     token,
+		LoggedIn:  true,
 	}
 
 	// return user
