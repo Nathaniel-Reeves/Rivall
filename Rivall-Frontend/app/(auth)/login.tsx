@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useQuery } from '@tanstack/react-query';
 // import { Image } from '@/components/ui/image';
 import { Box } from '@/components/ui/box';
 import { Card } from '@/components/ui/card';
@@ -20,43 +21,40 @@ import {
 } from "@/components/ui/form-control"
 // import { Divider } from "@/components/ui/divider"
 import { EyeIcon, EyeOffIcon } from "@/components/ui/icon"
-import { useState }from "react"
+import { useState, useEffect }from "react"
 import { ScrollView } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 
 import { login } from '@/api/auth';
-import { useCredentials } from '@/global-store/credential_store';
+import { useUserStore } from '@/global-store/user_store';
 
 function validateEmail(email: string) : boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+function validEmail(email: string) : boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email === ''
 }
 
 function validatePassword(password: string) : boolean {
   return password.length >= 6
 }
 
-async function loginUser(email: string, password: string) : Promise<boolean> {
-  // Send Login Request
-  const res = await login(email, password);
-  const userData = res[0];
-  const status = res[1];
-
-  if (userData.logged_in && status === 200) {
-    // Save User Data
-    const setCredentials = useCredentials((state: any) => state.setCredentials);
-    setCredentials({ userID: userData.id, token: userData.token })
-    return true
-  }
-  return false
+function validPassword(password: string) : boolean {
+  return password.length >= 6 || password === ''
 }
 
 export default function LoginScreen() {
 
-  const [isInvalid, setIsInvalid] = useState(false)
-  const [loginLoading, setLoginLoading] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const [isInvalidEmail, setIsInvalidEmail] = useState(false)
+  const [isInvalidPassword, setIsInvalidPassword] = useState(false)
+  
+  const [email, setEmail] = useState("nathaniel.jacob.reeves@gmail.com")
+  const [password, setPassword] = useState("mypassword")
 
+  const [loginLoading, setLoginLoading] = useState(false)
+
+  const setUserData = useUserStore((state: any) => state.setUserData)
   const router = useRouter()
 
   const handleSubmit = async () => {
@@ -64,29 +62,33 @@ export default function LoginScreen() {
 
     // Validate Login logic
     if (!validateEmail(email)) {
-      setIsInvalid(true)
+      console.debug('Invalid Email')
+      setIsInvalidEmail(true)
       setLoginLoading(false)
       return
     }
 
     if (!validatePassword(password)) {
-      setIsInvalid(true)
+      console.debug('Invalid Password')
+      setIsInvalidPassword(true)
       setLoginLoading(false)
       return
     }
 
     // Send Login Request
-    const result = await loginUser(email, password)
-    if (result === false) {
-      setIsInvalid(true)
+    const [data, success] = await login(email, password)
+    if (success) {
+      console.debug('Login Successful')
+      setUserData(data)
+      router.replace('/entry')
       setLoginLoading(false)
       return
     }
 
+    setIsInvalidEmail(true)
+    setIsInvalidPassword(true)
     setLoginLoading(false)
-    router.replace('/entry')
   }
-
 
   const [showPassword, setShowPassword] = useState(false)
   const handleState = () => {
@@ -94,6 +96,14 @@ export default function LoginScreen() {
       return !showState
     })
   }
+
+  useEffect(() => {
+    setIsInvalidPassword(!validPassword(password))
+  }, [password])
+
+  useEffect(() => {
+    setIsInvalidEmail(!validEmail(email))
+  }, [email])
 
   return (
     <LinearGradient
@@ -133,12 +143,12 @@ export default function LoginScreen() {
           </Box>
           <VStack className="gap-4 mt-10">
             <FormControl
-              isInvalid={isInvalid}
+              isInvalid={isInvalidEmail}
               size="md"
               isDisabled={false}
               isReadOnly={false}
               isRequired={true}
-              className="gap-4 mb-4"
+              className="gap-4"
             >
               <Box>
                 <FormControlLabel>
@@ -159,6 +169,15 @@ export default function LoginScreen() {
                   </FormControlErrorText>
                 </FormControlError>
               </Box>
+            </FormControl>
+            <FormControl
+              isInvalid={isInvalidPassword}
+              size="md"
+              isDisabled={false}
+              isReadOnly={false}
+              isRequired={true}
+              className="gap-4 mb-4"
+            >
               <Box>
                 <FormControlLabel>
                   <FormControlLabelText>Password</FormControlLabelText>

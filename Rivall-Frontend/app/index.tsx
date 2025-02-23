@@ -1,6 +1,4 @@
-import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from '@/components/ui/image';
 import { Box } from '@/components/ui/box';
 import { Text } from '@/components/ui/text';
@@ -11,7 +9,7 @@ import { Redirect } from 'expo-router';
 import WelcomeScreen from './(auth)/welcome';
 import StartupErrorScreen from './(auth)/startup_error';
 import { getUser } from '@/api/user';
-import { useCredentials } from '@/global-store/credential_store';
+import { useUserStore } from '@/global-store/user_store';
 
 function HomeScreen() {
   return (
@@ -29,9 +27,9 @@ function HomeScreen() {
 
 export default function App() {
 
-  // Check if storeage has user id and token
-  const { userID, token } = useCredentials((state: any) => state.credentials);
-  if (userID == '' || token == '') {
+  // Check if storage has user id and token
+  const user = useUserStore((state: any) => state.user);
+  if (user.id == '' || user.token == '') {
     console.debug('No user id or token')
     return (
       <WelcomeScreen/> // Redirect user to login or register
@@ -41,7 +39,7 @@ export default function App() {
   // Get User Data using auth token
   const { data, isLoading, error } = useQuery({
     queryKey: ['getUser', 'Startup'],
-    queryFn: () => getUser(userID, token),
+    queryFn: () => getUser(user.id, user.token),
     retryDelay: attempt => Math.min(attempt > 1 ? 2 ** attempt * 1000 : 1000, 30 * 1000),
   });
 

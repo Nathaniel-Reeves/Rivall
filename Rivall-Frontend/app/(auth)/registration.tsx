@@ -3,7 +3,7 @@ import { Box } from '@/components/ui/box';
 import { Card } from '@/components/ui/card';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
-import { Button, ButtonIcon } from '@/components/ui/button';
+import { Button, ButtonIcon, ButtonText, ButtonSpinner } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ChevronLeftIcon, AlertCircleIcon } from '@/components/ui/icon';
 import { Input, InputField, InputSlot, InputIcon } from "@/components/ui/input"
@@ -17,30 +17,126 @@ import {
 } from "@/components/ui/form-control"
 import { Divider } from "@/components/ui/divider"
 import { EyeIcon, EyeOffIcon } from "@/components/ui/icon"
-import React from "react"
+import { useState, useEffect } from "react"
 import { ScrollView } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
+
+import { register, login } from '@/api/auth';
+import { useUserStore } from '@/global-store/user_store';
+
+function validateName(name: string) : boolean {
+  return name.length > 0
+}
+
+function validateEmail(email: string) : boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+function validEmail(email: string) : boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email === ''
+}
+
+function validatePassword(password: string) : boolean {
+  return password.length >= 6
+}
+
+function validPassword(password: string) : boolean {
+  return password.length >= 6 || password === ''
+}
+
+function matchPassword(password: string, confirmPassword: string) : boolean {
+  return password === confirmPassword
+}
 
 export default function RegistrationScreen() {
 
-  const [isInvalid, setIsInvalid] = React.useState(false)
-  const [email, setEmail] = React.useState("12345")
-  const [password, setPassword] = React.useState("12345")
-  const [confirmPassword, setConfirmPassword] = React.useState("12345")
-  const handleSubmit = () => {
-    // Validate Register logic
-    if (email.length < 6) {
-      setIsInvalid(true)
-    } else {
-      setIsInvalid(false)
+  const [isInvalidEmail, setIsInvalidEmail] = useState(false)
+  const [passwordsMatch, setPasswordsMatch] = useState(true)
+  const [isInvalidPassword, setIsInvalidPassword] = useState(false)
+  const [isInvalidNames, setIsInvalidNames] = useState(false)
+
+  const [firstName, setFirstName] = useState("New")
+  const [lastName, setLastName] = useState("Rivall")
+  const [email, setEmail] = useState("new@email.com")
+  const [password, setPassword] = useState("123456")
+  const [confirmPassword, setConfirmPassword] = useState("123456")
+
+  const [registerLoading, setRegisterLoading] = useState(false)
+
+  const setUserData = useUserStore((state: any) => state.setUserData)
+  const router = useRouter()
+
+  const handleSubmit = async () => {
+    setRegisterLoading(true)
+
+    // Validate Login logic
+    if (!validateName(firstName)) {
+      setRegisterLoading(false)
+      return
     }
+
+    if (!validateName(lastName)) {
+      setRegisterLoading(false)
+      return
+    }
+
+    if (!validateEmail(email)) {
+      setIsInvalidEmail(true)
+      setRegisterLoading(false)
+      return
+    }
+
+    if (!validatePassword(password)) {
+      setIsInvalidPassword(true)
+      setRegisterLoading(false)
+      return
+    }
+
+    if (!validatePassword(confirmPassword)) {
+      setIsInvalidPassword(true)
+      setRegisterLoading(false)
+      return
+    }
+
+    if (!matchPassword(password, confirmPassword)) {
+      setPasswordsMatch(true)
+      setRegisterLoading(false)
+      return
+    }
+
+    // Send Register Request
+    const [data, success] = await register(firstName, lastName, email, password)
+    if (success) {
+      console.debug('Registration Successful')
+      setUserData(data)
+      router.replace('/entry')
+      setRegisterLoading(false)
+      return
+    }
+
+    setIsInvalidEmail(true)
+    setIsInvalidPassword(true)
+    setRegisterLoading(false)
   }
-  const [showPassword, setShowPassword] = React.useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const handleState = () => {
     setShowPassword((showState) => {
       return !showState
     })
   }
+
+  useEffect(() => {
+    setIsInvalidNames(!validateName(firstName) || !validateName(lastName))
+  }, [firstName, lastName])
+
+  useEffect(() => {
+    setPasswordsMatch(matchPassword(password, confirmPassword))
+    setIsInvalidPassword(!validPassword(password) || !validPassword(confirmPassword))
+  }, [password, confirmPassword])
+
+  useEffect(() => {
+    setIsInvalidEmail(!validEmail(email))
+  }, [email])
 
   return (
     <ScrollView
@@ -79,12 +175,53 @@ export default function RegistrationScreen() {
           className="gap-4 mt-10"
         >
           <FormControl
-            isInvalid={isInvalid}
+            isInvalid={isInvalidNames}
             size="md"
             isDisabled={false}
             isReadOnly={false}
             isRequired={true}
-            className="gap-4 mb-4"
+            className="gap-4"
+          >
+            <Box>
+              <FormControlLabel>
+                <FormControlLabelText>First Name</FormControlLabelText>
+              </FormControlLabel>
+              <Input className="my-1" size="md">
+                <InputField
+                  type="text"
+                  placeholder="first name"
+                  value={firstName}
+                  onChangeText={(text) => setFirstName(text)}
+                />
+              </Input>
+            </Box>
+            <Box>
+              <FormControlLabel>
+                <FormControlLabelText>Last Name</FormControlLabelText>
+              </FormControlLabel>
+              <Input className="my-1" size="md">
+                <InputField
+                  type="text"
+                  placeholder="first name"
+                  value={lastName}
+                  onChangeText={(text) => setLastName(text)}
+                />
+              </Input>
+              <FormControlError>
+                <FormControlErrorIcon as={AlertCircleIcon} />
+                <FormControlErrorText>
+                First and last name are required.
+                </FormControlErrorText>
+              </FormControlError>
+            </Box>
+          </FormControl>
+          <FormControl
+            isInvalid={isInvalidEmail}
+            size="md"
+            isDisabled={false}
+            isReadOnly={false}
+            isRequired={true}
+            className="gap-4"
           >
             <Box>
               <FormControlLabel>
@@ -93,7 +230,7 @@ export default function RegistrationScreen() {
               <Input className="my-1" size="md">
                 <InputField
                   type="text"
-                  placeholder="password"
+                  placeholder="email"
                   value={email}
                   onChangeText={(text) => setEmail(text)}
                 />
@@ -101,10 +238,19 @@ export default function RegistrationScreen() {
               <FormControlError>
                 <FormControlErrorIcon as={AlertCircleIcon} />
                 <FormControlErrorText>
-                  Atleast 6 characters are required.
+                Invalid Email.
                 </FormControlErrorText>
               </FormControlError>
             </Box>
+          </FormControl>
+          <FormControl
+            isInvalid={!passwordsMatch || isInvalidPassword}
+            size="md"
+            isDisabled={false}
+            isReadOnly={false}
+            isRequired={true}
+            className="gap-4 mb-4"
+          >
             <Box>
               <FormControlLabel>
                 <FormControlLabelText>Password</FormControlLabelText>
@@ -123,7 +269,7 @@ export default function RegistrationScreen() {
               <FormControlError>
                 <FormControlErrorIcon as={AlertCircleIcon} />
                 <FormControlErrorText>
-                  Atleast 6 characters are required.
+                  Invalid Password.
                 </FormControlErrorText>
               </FormControlError>
             </Box>
@@ -134,7 +280,7 @@ export default function RegistrationScreen() {
               <Input className="my-1" size="md">
                 <InputField
                   type={showPassword ? "text" : "password"}
-                  placeholder="password"
+                  placeholder="confirm password"
                   value={confirmPassword}
                   onChangeText={(text) => setConfirmPassword(text)}
                 />
@@ -145,7 +291,7 @@ export default function RegistrationScreen() {
               <FormControlError>
                 <FormControlErrorIcon as={AlertCircleIcon} />
                 <FormControlErrorText>
-                  Atleast 6 characters are required.
+                  Invalid Password.
                 </FormControlErrorText>
               </FormControlError>
             </Box>
@@ -153,10 +299,10 @@ export default function RegistrationScreen() {
           <Button
             className="shadow-md shadow-black"
             size="lg"
+            onPress={handleSubmit}
+            disabled={registerLoading}
           >
-            <Text
-              className="text-typography-0 text-lg"
-            >Register</Text>
+            {registerLoading ? <ButtonSpinner/> : <ButtonText className="text-typography-0 text-lg">Register</ButtonText>}
           </Button>
           {/* <Box className="flex-row justify-center">
             <HStack className="justify-self-center items-center">

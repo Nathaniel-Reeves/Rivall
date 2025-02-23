@@ -1,6 +1,4 @@
-import { wrappedFetch } from './wrappedFetch';
-
-export async function login(email: string, password: string) : Promise<Object> {
+export async function login(email: string, password: string) : Promise<[any, boolean]> {
   const endpoint = `${process.env.EXPO_PUBLIC_API_URL}/api/v1/auth/login`;
   const method = 'POST';
   const headers = {};
@@ -8,16 +6,40 @@ export async function login(email: string, password: string) : Promise<Object> {
     email: email,
     password: password,
   };
-  return await wrappedFetch(endpoint, method, headers, body);
+  try {
+    const res = await fetch(endpoint, {
+      method: method,
+      headers: headers,
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    return [data, res.ok]; 
+  } catch (error) {
+    console.error('Error:', error);
+    return [null, false];
+  }
 }
 
-export async function register(email: string, password: string) : Promise<Object> {
+export async function register(firstName: string, lastName: string, email: string, password: string) : Promise<[any, boolean]> {
   const endpoint = `${process.env.EXPO_PUBLIC_API_URL}/api/v1/auth/register`;
   const method = 'POST';
   const headers = {};
   const body = {
     email: email,
     password: password,
+    first_name: firstName,
+    last_name: lastName,
   };
-  return await wrappedFetch(endpoint, method, headers, body);
+  try {
+    const res = await fetch(endpoint, {
+      method: method,
+      headers: headers,
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    return [data, res.ok];
+  } catch (error) {
+    console.error('Error:', error);
+    return [null, false];
+  }
 }
