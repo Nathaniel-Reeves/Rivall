@@ -21,32 +21,14 @@ import { useState, useEffect } from "react"
 import { ScrollView } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 
-import { register, login } from '@/api/auth';
+import { register } from '@/api/auth';
 import { useUserStore } from '@/global-store/user_store';
-
-function validateName(name: string) : boolean {
-  return name.length > 0
-}
-
-function validateEmail(email: string) : boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
-
-function validEmail(email: string) : boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email === ''
-}
-
-function validatePassword(password: string) : boolean {
-  return password.length >= 6
-}
-
-function validPassword(password: string) : boolean {
-  return password.length >= 6 || password === ''
-}
-
-function matchPassword(password: string, confirmPassword: string) : boolean {
-  return password === confirmPassword
-}
+import {
+  validateEmail,
+  validateName,
+  validatePassword,
+  matchPassword
+} from '@/common/auth_helper_functions';
 
 export default function RegistrationScreen() {
 
@@ -55,11 +37,11 @@ export default function RegistrationScreen() {
   const [isInvalidPassword, setIsInvalidPassword] = useState(false)
   const [isInvalidNames, setIsInvalidNames] = useState(false)
 
-  const [firstName, setFirstName] = useState("New")
-  const [lastName, setLastName] = useState("Rivall")
-  const [email, setEmail] = useState("new@email.com")
-  const [password, setPassword] = useState("123456")
-  const [confirmPassword, setConfirmPassword] = useState("123456")
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
 
   const [registerLoading, setRegisterLoading] = useState(false)
 

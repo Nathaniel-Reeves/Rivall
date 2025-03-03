@@ -24,16 +24,21 @@ func New() *mux.Router {
 	publicRouter := r.PathPrefix("/api/v1").Subrouter()
 	publicRouter.HandleFunc("/auth/register", auth.RegisterNewUser).Methods(http.MethodPost)
 	publicRouter.HandleFunc("/auth/login", auth.LoginUser).Methods(http.MethodPost)
+	publicRouter.HandleFunc("/auth/recovery/send-code", auth.SendAccountRecoveryEmail).Methods(http.MethodPost)
+	publicRouter.HandleFunc("/auth/recovery/validate-code", auth.ValidateAccountRecoveryCode).Methods(http.MethodPost)
 
 	privateRouter := r.PathPrefix("/api/v1").Subrouter()
-	privateRouter.Use(middleware.AuthenticationMiddleware)
+	privateRouter.Use(middleware.AuthMiddleware)
+
 	privateRouter.HandleFunc("/users/{user_id}", users.GetUser).Methods(http.MethodGet)
+	privateRouter.HandleFunc("/auth/recovery/{user_id}/reset-password", auth.UpdateUserPassword).Methods(http.MethodPost)
+	privateRouter.HandleFunc("/auth/{user_id}/refresh", auth.RenewAccessToken).Methods(http.MethodPost)
+	privateRouter.HandleFunc("/auth/{user_id}/logout", auth.LogoutUser).Methods(http.MethodDelete)
 
 	privateWSRouter := r.PathPrefix("/api/v1/ws").Subrouter()
-	privateWSRouter.Use(middleware.AuthenticationMiddleware)
+	privateWSRouter.Use(middleware.AuthMiddleware)
 
-	privateWSRouter.HandleFunc("/connect", globals.WSManager.ServeWS)
-	privateWSRouter.HandleFunc("/auth/logout", auth.LogoutUser).Methods(http.MethodDelete)
+	privateWSRouter.HandleFunc("/connect/{user_id}", globals.WSManager.ServeWS)
 	privateWSRouter.HandleFunc("/users/{user_id}", users.GetUser).Methods(http.MethodGet)
 	privateWSRouter.HandleFunc("/users/{user_id}/contacts", users.PostUserContact).Methods(http.MethodPost)
 	privateWSRouter.HandleFunc("/users/{user_id}/contacts", users.DeleteUserContact).Methods(http.MethodDelete)

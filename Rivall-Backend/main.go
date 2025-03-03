@@ -12,6 +12,8 @@ import (
 	"Rivall-Backend/api/router"
 	"Rivall-Backend/config"
 	"Rivall-Backend/util/logger"
+	"Rivall-Backend/util/password_recovery"
+	"Rivall-Backend/util/session_manager"
 
 	"Rivall-Backend/api/global"
 
@@ -69,12 +71,39 @@ var Validator *validator.Validate
 var MongoClient *mongo.Client
 var JWTSecretKey string
 
+// func sendEmail() {
+// 	message := mail.NewMsg()
+// 	if err := message.From("rivall@gmail.com"); err != nil {
+// 		log.Error().Err(err).Msg("Failed to set sender")
+// 		return
+// 	}
+// 	if err := message.To("nathaniel.jacob.reeves@gmail.com"); err != nil {
+// 		log.Error().Err(err).Msg("Failed to set recipient")
+// 		return
+// 	}
+// 	message.Subject("Test Email")
+// 	message.SetBodyString(mail.TypeTextPlain, "This is a test email")
+// 	client, err := mail.NewClient("smtp.example.com", mail.WithSMTPAuth(mail.SMTPAuthPlain),
+// 		mail.WithUsername("my_username"), mail.WithPassword("extremely_secret_pass"))
+// 	if err != nil {
+// 		log.Error().Err(err).Msg("Failed to create mail client")
+// 	}
+// 	if err := client.DialAndSend(message); err != nil {
+// 		log.Error().Err(err).Msg("Failed to send mail")
+// 	}
+// }
+
 func main() {
+
+	// Send Email
+	// sendEmail()
+
 	// Initialize logger, validator, and config
 	c := config.New()
 	logLevel := c.Server.Debug
 	l := logger.New(logLevel, c)
 	v := validator.New()
+	pr := password_recovery.NewRecoveryRetentionMap(context.Background())
 	log.Info().Msg("Building Rivall Backend API...")
 
 	// Initialize context
@@ -82,6 +111,9 @@ func main() {
 
 	// Connect MongoDB
 	MongoClient := ConnectMongoDB(ctx, c)
+
+	// Setup Logined User Management
+	Sessions := session_manager.NewSessionsManager(ctx, c.Server.JWTSecretKey)
 
 	// Setup Websocket Management
 	WSManager := websocket.NewManager(ctx)
@@ -91,7 +123,9 @@ func main() {
 	global.Validator = v
 	global.MongoClient = MongoClient
 	global.WSManager = WSManager
+	global.SessionManager = Sessions
 	global.JWTSecretKey = c.Server.JWTSecretKey
+	global.PasswordRecoveryMap = pr
 
 	// Initialize router
 	r := router.New()

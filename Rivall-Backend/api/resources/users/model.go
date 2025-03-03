@@ -29,15 +29,16 @@ const database string = "Rivall-DB"
 const CollectionName string = "Users"
 
 type User struct {
-	ID          bson.ObjectID   `json:"_id"           bson:"_id"`
-	FirstName   string          `json:"first_name"    bson:"first_name"`
-	LastName    string          `json:"last_name"     bson:"last_name"`
-	Email       string          `json:"email"         bson:"email"`
-	Password    string          `json:"password" bson:"password"`
-	AvatarImage string          `json:"avatar_image"  bson:"avatar_image"`
-	GroupIDs    []bson.ObjectID `bson:"groups_ids"`
-	ContactIDs  []bson.ObjectID `bson:"contact_ids"`
-	OTP         string          `json:"otp"`
+	ID           bson.ObjectID   `json:"_id"           bson:"_id"`
+	FirstName    string          `json:"first_name"    bson:"first_name"`
+	LastName     string          `json:"last_name"     bson:"last_name"`
+	Email        string          `json:"email"         bson:"email"`
+	Password     string          `json:"password" bson:"password"`
+	AvatarImage  string          `json:"avatar_image"  bson:"avatar_image"`
+	GroupIDs     []bson.ObjectID `bson:"groups_ids"`
+	ContactIDs   []bson.ObjectID `bson:"contact_ids"`
+	OTP          string          `json:"otp"`
+	RefreshToken string          `json:"refresh_token" bson:"refresh_token"`
 	// Contacts are not stored on the database, they are fetched from the contact_ids
 	Contacts             []Contact             `json:"contacts"      bson:"omitempty"`
 	MessageGroupRequests []MessageGroupRequest `json:"message_group_request_ids" bson:"message_group_request_ids"`
@@ -172,6 +173,7 @@ func CreateUser(user User) error {
 	// hash password
 	user = HashUserPassword(user)
 	user.ID = bson.NewObjectID()
+	user.RefreshToken = ""
 
 	// set default empty arrays
 	user.ContactIDs = []bson.ObjectID{}
@@ -357,4 +359,18 @@ func UserExists(id string) bool {
 		log.Error().Err(err).Msg("Failed to check if user exists")
 	}
 	return count > 0
+}
+
+func UpdateUserRefreshToken(user User) error {
+	collection := global.MongoClient.Database(database).Collection(CollectionName)
+
+	i, _ := bson.ObjectIDFromHex(user.ID.Hex())
+	filter := bson.D{{"_id", i}}
+	update := bson.D{{"$set", bson.D{{"refresh_token", user.RefreshToken}}}}
+
+	_, err := collection.UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to update user refresh token")
+	}
+	return err
 }

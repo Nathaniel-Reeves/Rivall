@@ -42,6 +42,14 @@ func New() *Conf {
 		log.Fatalf("Failed to decode: %s", err)
 	}
 
+	if len(c.Server.JWTSecretKey) == 0 {
+		log.Fatalf("JWT_SECRET_KEY is required")
+	}
+
+	if len(c.Server.JWTSecretKey) < 32 {
+		log.Fatalf("JWT_SECRET_KEY must be at least 32 characters")
+	}
+
 	return &c
 }
 

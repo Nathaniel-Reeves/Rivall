@@ -10,7 +10,7 @@ export default function WelcomeScreen() {
     <Box className="flex-1 justify-center w-80 mx-auto">
       <Image
         source={require('@/assets/icon.png')}
-        className="shadow-md shadow-black w-[236px] h-[236px] justify-center mx-auto mb-10 rounded-[42px]"
+        className="shadow-lg shadow-black w-[236px] h-[236px] justify-center mx-auto mb-10 rounded-[52px]"
       />
       <Text className="text-typography-800 text-2xl font-medium text-pretty text-center mb-20">Where Rivalls' Become Campions</Text>
       <VStack className="gap-4 mt-10">

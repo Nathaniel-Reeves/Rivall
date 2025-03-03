@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
 )
@@ -105,6 +106,21 @@ func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request) {
 
 	log.Debug().Msg("Serving Websocket Connection")
 
+	// Grab the User ID
+	vars := mux.Vars(r)
+	userID := vars["user_id"]
+	if userID == "" {
+		// Tell the user its not authorized
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// Check user ID is valid
+	if userID == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	// Grab the OTP in the Get param
 	otp := r.URL.Query().Get("otp")
 	if otp == "" {
@@ -130,7 +146,7 @@ func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create New Client
-	client := NewClient(conn, m)
+	client := NewClient(conn, m, userID)
 	// Add the newly created client to the manager
 	m.addClient(client)
 	log.Debug().Msg("Client Added to Manager")
@@ -147,6 +163,8 @@ func (m *Manager) addClient(client *Client) {
 
 	// Add Client
 	m.clients[client] = true
+
+	log.Debug().Msg("Client Added")
 }
 
 // removeClient will remove the client and clean up
@@ -160,5 +178,25 @@ func (m *Manager) removeClient(client *Client) {
 		client.connection.Close()
 		// remove
 		delete(m.clients, client)
+		log.Debug().Msg("Client removed")
 	}
+}
+
+// remove client by user id
+func (m *Manager) RemoveClientByUserID(userID string) {
+	m.Lock()
+	defer m.Unlock()
+
+	for client := range m.clients {
+		if client.userID == userID {
+			// close connection
+			client.connection.Close()
+			// remove
+			delete(m.clients, client)
+			log.Debug().Msg("Client removed")
+			return
+		}
+	}
+
+	log.Warn().Msg("Client not found")
 }
