@@ -13,6 +13,8 @@ import {
   FormControlLabelText,
 } from "@/components/ui/form-control"
 import { useState, useEffect } from "react"
+import { useRouter } from 'expo-router';
+import { sendCodeToEmail } from '@/api/auth';
 
 import {
   validateEmail,
@@ -29,6 +31,8 @@ export function EmailInput({ email, setEmail }: EmailInputProps) {
   const [isInvalidEmail, setIsInvalidEmail] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  const router = useRouter()
+
   const handleSubmit = async () => {
     setLoading(true)
 
@@ -39,19 +43,19 @@ export function EmailInput({ email, setEmail }: EmailInputProps) {
       return
     }
 
-    // Send Login Request
-    // const [data, success] = await login(email, password)
-    // if (success) {
-    //   console.debug('Login Successful')
-    //   setUserData(data)
-    //   router.replace('/entry')
-    //   setLoginLoading(false)
-    //   return
-    // }
-
-    setTimeout(() => {
+    // Send Password Recovery Code to Email
+    const [data, success] = await sendCodeToEmail(email)
+    if (success) {
+      console.debug('Login Successful')
       setLoading(false)
-    }, 2000)
+      router.replace('/entry')
+      return
+    }
+
+    console.debug('Request Failed')
+    console.debug(data)
+    console.debug(success)
+    setLoading(false)
   }
 
   useEffect(() => {

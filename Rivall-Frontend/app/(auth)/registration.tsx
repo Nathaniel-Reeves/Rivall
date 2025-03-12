@@ -27,7 +27,9 @@ import {
   validateEmail,
   validateName,
   validatePassword,
-  matchPassword
+  matchPassword,
+  validPassword,
+  validEmail
 } from '@/common/auth_helper_functions';
 
 export default function RegistrationScreen() {
