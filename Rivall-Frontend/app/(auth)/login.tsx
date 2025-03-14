@@ -38,12 +38,12 @@ export default function LoginScreen() {
   const [isInvalidEmail, setIsInvalidEmail] = useState(false)
   const [isInvalidPassword, setIsInvalidPassword] = useState(false)
   
-  const [email, setEmail] = useState("nathaniel.jacob.reeves@gmail.com")
-  const [password, setPassword] = useState("mypassword")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
 
   const [loginLoading, setLoginLoading] = useState(false)
 
-  const setUserData = useUserStore((state: any) => state.setUserData)
+  const setStoreData = useUserStore((state: any) => state.setStoreData)
   const router = useRouter()
 
   const handleSubmit = async () => {
@@ -68,7 +68,7 @@ export default function LoginScreen() {
     const [data, success] = await login(email, password)
     if (success) {
       console.debug('Login Successful')
-      setUserData(data)
+      setStoreData(data)
       router.replace('/entry')
       setLoginLoading(false)
       return
@@ -92,6 +92,7 @@ export default function LoginScreen() {
 
   useEffect(() => {
     setIsInvalidEmail(!validEmail(email))
+    email.toLowerCase()
   }, [email])
 
   return (
@@ -177,7 +178,7 @@ export default function LoginScreen() {
               </FormControlError>
               <Link href="./(forgot_password)/password_reset" replace>
                 <FormControlHelper>
-                  <FormControlHelperText className="text-right text-typography-500 font-medium">
+                  <FormControlHelperText className="text-right text-typography-500 font-medium pb-2">
                     Forgot Password?
                   </FormControlHelperText>
                 </FormControlHelper>
@@ -192,7 +193,7 @@ export default function LoginScreen() {
           >
             {loginLoading ? <ButtonSpinner/> : <ButtonText className="text-typography-0 text-lg">Login</ButtonText>}
           </Button>
-          <Box className="flex-row justify-center">
+          {/* <Box className="flex-row justify-center">
             <HStack className="justify-self-center items-center">
               <Divider className="w-12 bg-gray-700" />
               <Text className="text-center mx-3">Or Login With</Text>
@@ -201,11 +202,11 @@ export default function LoginScreen() {
           </Box>
           <Box className="flex-row justify-center">
             <HStack className="flex-1 justify-between">
-              <Button variant="outline" size="lg" className="p-8" disabled={true}><Image source={require("@/assets/social-icons/facebook.png")} size="xs"/></Button>
-              <Button variant="outline" size="lg" className="p-8" disabled={true}><Image source={require("@/assets/social-icons/google.png")} size="xs"/></Button>
-              <Button variant="outline" size="lg" className="p-8" disabled={true}><Image source={require("@/assets/social-icons/apple.png")} size="xs"/></Button>
+              <Button variant="outline" size="lg" className="p-8" disabled={true}><Image source={require("@/assets/social-icons/facebook.png")} size="xs" alt="Facebook Login"/></Button>
+              <Button variant="outline" size="lg" className="p-8" disabled={true}><Image source={require("@/assets/social-icons/google.png")} size="xs" alt="Google Login"/></Button>
+              <Button variant="outline" size="lg" className="p-8" disabled={true}><Image source={require("@/assets/social-icons/apple.png")} size="xs" alt="Apple Login"/></Button>
             </HStack>
-          </Box>
+          </Box> */}
           <Box className="flex-row justify-center mt-4">
             <HStack className="flex-1 justify-between">
               <Text className="text-center text-lg font-medium">Don't have an account?</Text>

@@ -13,7 +13,6 @@ import {
   FormControlLabelText,
 } from "@/components/ui/form-control"
 import { useState, useEffect } from "react"
-import { useRouter } from 'expo-router';
 import { sendCodeToEmail } from '@/api/auth';
 
 import {
@@ -22,21 +21,22 @@ import {
 } from '@/common/auth_helper_functions';
 
 interface EmailInputProps {
+  setStep: (step: string) => void;
   email: string;
   setEmail: (email: string) => void;
+  codeSentState: string;
+  setCodeSentState: (state: string) => void;
 }
 
-export function EmailInput({ email, setEmail }: EmailInputProps) {
+export function EmailInput({ setStep, email, setEmail, codeSentState, setCodeSentState }: EmailInputProps) {
 
   const [isInvalidEmail, setIsInvalidEmail] = useState(false)
-  const [loading, setLoading] = useState(false)
-
-  const router = useRouter()
+  const [accountDoesntExist, setAccountDoesntExist] = useState(false)
 
   const handleSubmit = async () => {
-    setLoading(true)
+    setCodeSentState('pending')
 
-    // Validate Login logic
+    // Validate Email
     if (!validateEmail(email)) {
       console.debug('Invalid Email')
       setIsInvalidEmail(true)
@@ -46,27 +46,31 @@ export function EmailInput({ email, setEmail }: EmailInputProps) {
     // Send Password Recovery Code to Email
     const [data, success] = await sendCodeToEmail(email)
     if (success) {
-      console.debug('Login Successful')
-      setLoading(false)
-      router.replace('/entry')
+      console.debug('Email Sent')
+      setCodeSentState('sent')
+      setStep('code')
       return
     }
 
+    if (data === 'User not found') {
+      console.debug('User not found')
+      setAccountDoesntExist(true)
+    }
+
     console.debug('Request Failed')
-    console.debug(data)
-    console.debug(success)
-    setLoading(false)
+    setCodeSentState('failed')
   }
 
   useEffect(() => {
     setIsInvalidEmail(!validEmail(email))
+    setAccountDoesntExist(false)
   }, [email])
 
   return (
     <VStack className="gap-4 mt-10">
       <Text className="text-typography-800 text-xl text-pretty text-left mb-3">Send us your email and we will send you a code to regain access to your account.</Text>
       <FormControl
-        isInvalid={isInvalidEmail}
+        isInvalid={isInvalidEmail || accountDoesntExist}
         size="md"
         isDisabled={false}
         isReadOnly={false}
@@ -88,7 +92,8 @@ export function EmailInput({ email, setEmail }: EmailInputProps) {
           <FormControlError>
             <FormControlErrorIcon as={AlertCircleIcon} />
             <FormControlErrorText>
-              Invalid Email.
+              {isInvalidEmail ? 'Invalid Email. ' : ''}
+              {accountDoesntExist ? 'Account does not exist.' : ''}
             </FormControlErrorText>
           </FormControlError>
         </Box>
@@ -97,9 +102,9 @@ export function EmailInput({ email, setEmail }: EmailInputProps) {
         className="shadow-md shadow-black"
         size="lg"
         onPress={handleSubmit}
-        disabled={loading}
+        disabled={codeSentState === 'pending'}
       >
-        {loading ? <ButtonSpinner/> : <ButtonText className="text-typography-0 text-lg">Send Code</ButtonText>}
+        {codeSentState === 'pending' ? <ButtonSpinner/> : <ButtonText className="text-typography-0 text-lg">Send Code</ButtonText>}
       </Button>
     </VStack>
   )

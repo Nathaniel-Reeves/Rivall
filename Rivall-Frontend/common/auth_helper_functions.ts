@@ -19,13 +19,17 @@ export function matchPassword(password: string, confirmPassword: string) : boole
 }
 
 export function validateCode(code: string) : boolean {
-  return code.length === 6 && !isNaN(Number(code))
+  return code.length === 6
 }
 
 export function validCode(code: string) : boolean {
-  return code.length === 6 && !isNaN(Number(code)) || code === ''
+  return code.length === 6 || code === ''
 }
 
 export function validateName(name: string) : boolean {
   return name.length > 0
+}
+
+export function validName(name: string) : boolean {
+  return name.length > 0 || name === ''
 }

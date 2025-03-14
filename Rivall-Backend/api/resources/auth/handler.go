@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -16,7 +17,7 @@ import (
 )
 
 type UserRes struct {
-	ID          string `json:"id"`
+	ID          string `json:"_id"`
 	FirstName   string `json:"first_name"`
 	LastName    string `json:"last_name"`
 	Email       string `json:"email"`
@@ -41,6 +42,7 @@ func SendAccountRecoveryEmail(w http.ResponseWriter, r *http.Request) {
 
 	// get user data
 	emailReq := RecoveryCodeReq{}
+	emailReq.Email = strings.ToLower(emailReq.Email)
 	err := json.NewDecoder(r.Body).Decode(&emailReq)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to decode user")
@@ -87,7 +89,7 @@ func ValidateAccountRecoveryCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get code
-	code := req.Code
+	code := strings.ToUpper(req.Code)
 	if code == "" {
 		log.Error().Msg("Code must be provided")
 		w.WriteHeader(http.StatusBadRequest)
@@ -220,6 +222,7 @@ func RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 	// get user data
 	user := users.User{}
 	err := json.NewDecoder(r.Body).Decode(&user)
+	user.Email = strings.ToLower(user.Email)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to decode user, invalid JSON request")
 		w.WriteHeader(http.StatusBadRequest)
@@ -276,6 +279,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	// get user data
 	userLogin := users.User{}
 	err := json.NewDecoder(r.Body).Decode(&userLogin)
+	userLogin.Email = strings.ToLower(userLogin.Email)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to decode user")
 		w.WriteHeader(http.StatusBadRequest)

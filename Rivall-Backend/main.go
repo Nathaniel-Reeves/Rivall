@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"Rivall-Backend/api/resources/websocket"
 	"Rivall-Backend/api/router"
@@ -42,7 +43,7 @@ func ConnectMongoDB(ctx context.Context, c *config.Conf) *mongo.Client {
 		log.Fatal().Msg("MongoDB URI is empty")
 		panic("MongoDB URI is empty")
 	}
-	MongoClient, err := mongo.Connect(options.Client().ApplyURI(uri))
+	MongoClient, err := mongo.Connect(options.Client().ApplyURI(uri).SetTimeout(6 * time.Second))
 
 	if err != nil {
 		log.Fatal().Err(err).Msg("MongoDB connection failure")

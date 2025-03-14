@@ -19,45 +19,58 @@ import {
   validatePassword,
   validPassword
 } from '@/common/auth_helper_functions';
+import { resetPassword } from '@/api/auth';
+import { useUserStore } from '@/global-store/user_store';
+import { useRouter } from 'expo-router';
 
-import { ResetPasswordState } from './password_reset'
+interface ResetPasswordInputProps {
+  setStep: (step: string) => void;
+  password: string;
+  setPassword: (password: string) => void;
+  resetPasswordState: string;
+  setResetPasswordState: (state: string) => void;
+}
 
-export function ResetPasswordInput({ state }: { state: ResetPasswordState }) {
+export function ResetPasswordInput({ password, setPassword, resetPasswordState, setResetPasswordState }: ResetPasswordInputProps) {
 
+  const [confirm_password, setConfirmPassword] = useState('')
   const [passwordsMatch, setPasswordsMatch] = useState(true)
   const [isInvalidPassword, setIsInvalidPassword] = useState(false)
+  
+  const state = useUserStore((state: any) => state)
+  const router = useRouter()
 
   const handleSubmit = async () => {
-    state.setResetPasswordState('pending')
+    setResetPasswordState('pending')
 
     // Validate Login logic
-    if (!validatePassword(state.password)) {
+    if (!validatePassword(password)) {
       setIsInvalidPassword(true)
       return
     }
 
-    if (!validatePassword(state.confirm_password)) {
+    if (!validatePassword(confirm_password)) {
       setIsInvalidPassword(true)
       return
     }
 
-    if (!matchPassword(state.password, state.confirm_password)) {
-      setPasswordsMatch(true)
+    if (!matchPassword(password, confirm_password)) {
+      setPasswordsMatch(false)
       return
     }
 
-    // Send Login Request
-    // const [data, success] = await login(email, password)
-    // if (success) {
-    //   console.debug('Login Successful')
-    //   setUserData(data)
-    //   router.replace('/entry')
-    //   setLoginLoading(false)
-    //   return
-    // }
+    // Send Reset Password Request
+    const [data, success] = await resetPassword(state, password)
+    if (success) {
+      console.debug('Password Reset Successful')
+      setResetPasswordState('success')
+      router.replace('/entry')
+      return
+    }
 
-    state.setResetPasswordState('success')
-    // state.setStep('email')
+    console.debug('Password Reset Failed')
+    console.debug(data)
+    setResetPasswordState('failed')
   }
 
   const [showPassword, setShowPassword] = useState(false)
@@ -68,15 +81,15 @@ export function ResetPasswordInput({ state }: { state: ResetPasswordState }) {
   }
 
   useEffect(() => {
-    setPasswordsMatch(matchPassword(state.password, state.confirm_password))
-    setIsInvalidPassword(!validPassword(state.password) || !validPassword(state.confirm_password))
-  }, [state.password, state.confirm_password])
+    setPasswordsMatch(matchPassword(password, confirm_password))
+    setIsInvalidPassword(!validPassword(password) || !validPassword(confirm_password))
+  }, [password, confirm_password])
 
   return (
     <VStack className="gap-4 mt-10">
       <Text className="text-typography-800 text-xl text-pretty text-left mb-3">Create a new password and regain access to your account.</Text>
       <FormControl
-        isInvalid={!passwordsMatch || isInvalidPassword || state.reset_password == 'error'}
+        isInvalid={!passwordsMatch || isInvalidPassword || resetPasswordState == 'error'}
         size="md"
         isDisabled={false}
         isReadOnly={false}
@@ -91,8 +104,8 @@ export function ResetPasswordInput({ state }: { state: ResetPasswordState }) {
             <InputField
               type={showPassword ? "text" : "password"}
               placeholder="password"
-              value={state.password}
-              onChangeText={(text) => state.setPassword(text)}
+              value={password}
+              onChangeText={(text) => setPassword(text)}
             />
             <InputSlot className="pr-3" onPress={handleState}>
               <InputIcon as={showPassword ? EyeIcon : EyeOffIcon} />
@@ -101,7 +114,9 @@ export function ResetPasswordInput({ state }: { state: ResetPasswordState }) {
           <FormControlError>
             <FormControlErrorIcon as={AlertCircleIcon} />
             <FormControlErrorText>
-              Invalid Password.
+              {isInvalidPassword ? "Invalid Password.  " : ""}
+              {passwordsMatch ? "" : "Passwords do not match."}
+              {resetPasswordState == 'error' ? "An error occurred.  Please try again." : ""}
             </FormControlErrorText>
           </FormControlError>
         </Box>
@@ -113,8 +128,8 @@ export function ResetPasswordInput({ state }: { state: ResetPasswordState }) {
             <InputField
               type={showPassword ? "text" : "password"}
               placeholder="confirm password"
-              value={state.confirm_password}
-              onChangeText={(text) => state.setConfirmPassword(text)}
+              value={confirm_password}
+              onChangeText={(text) => setConfirmPassword(text)}
             />
             <InputSlot className="pr-3" onPress={handleState}>
               <InputIcon as={showPassword ? EyeIcon : EyeOffIcon} />
@@ -123,7 +138,9 @@ export function ResetPasswordInput({ state }: { state: ResetPasswordState }) {
           <FormControlError>
             <FormControlErrorIcon as={AlertCircleIcon} />
             <FormControlErrorText>
-              Invalid Password.
+              {isInvalidPassword ? "Invalid Password.  " : ""}
+              {passwordsMatch ? "" : "Passwords do not match."}
+              {resetPasswordState == 'error' ? "An error occurred.  Please try again." : ""}
             </FormControlErrorText>
           </FormControlError>
         </Box>
@@ -132,9 +149,9 @@ export function ResetPasswordInput({ state }: { state: ResetPasswordState }) {
         className="shadow-md shadow-black"
         size="lg"
         onPress={handleSubmit}
-        disabled={state.reset_password == 'pending'}
+        disabled={resetPasswordState == 'pending'}
       >
-        {state.reset_password == 'pending' ? <ButtonSpinner/> : <ButtonText className="text-typography-0 text-lg">Reset Password</ButtonText>}
+        {resetPasswordState == 'pending' ? <ButtonSpinner/> : <ButtonText className="text-typography-0 text-lg">Reset Password</ButtonText>}
       </Button>
     </VStack>
   )

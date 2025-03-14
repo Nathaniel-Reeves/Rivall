@@ -34,7 +34,7 @@ func NewRecoveryRetentionMap(ctx context.Context) *RecoveryRetentionMap {
 func (rm RecoveryRetentionMap) NewRecoveryOTP(email string) RecoveryOTP {
 	o := RecoveryOTP{
 		Email:     email,
-		Code:      strings.ToLower(uuid.New().String()[0:6]),
+		Code:      strings.ToUpper(uuid.New().String()[0:6]),
 		ExpiresAt: time.Now().Add(CODE_TIMEOUT),
 	}
 
@@ -52,7 +52,7 @@ func (rm RecoveryRetentionMap) VerifyRecoveryOTP(code string, email string) bool
 	}
 
 	// Verify OTP is correct
-	if strings.ToLower(rm[email].Code) != strings.ToLower(code) {
+	if strings.ToUpper(rm[email].Code) != strings.ToUpper(code) {
 		// otp is incorrect
 		log.Debug().Msg("OTP is incorrect")
 		return false

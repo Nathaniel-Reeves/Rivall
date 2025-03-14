@@ -21,7 +21,7 @@ import { useState, useEffect } from "react"
 import { ScrollView } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 
-import { register } from '@/api/auth';
+import { register, login } from '@/api/auth';
 import { useUserStore } from '@/global-store/user_store';
 import {
   validateEmail,
@@ -29,12 +29,14 @@ import {
   validatePassword,
   matchPassword,
   validPassword,
-  validEmail
+  validEmail,
+  validName
 } from '@/common/auth_helper_functions';
 
 export default function RegistrationScreen() {
 
   const [isInvalidEmail, setIsInvalidEmail] = useState(false)
+  const [accountExists, setAccountExists] = useState(false)
   const [passwordsMatch, setPasswordsMatch] = useState(true)
   const [isInvalidPassword, setIsInvalidPassword] = useState(false)
   const [isInvalidNames, setIsInvalidNames] = useState(false)
@@ -47,43 +49,45 @@ export default function RegistrationScreen() {
 
   const [registerLoading, setRegisterLoading] = useState(false)
 
-  const setUserData = useUserStore((state: any) => state.setUserData)
+  const setStoreData = useUserStore((state: any) => state.setStoreData)
   const router = useRouter()
 
   const handleSubmit = async () => {
     setRegisterLoading(true)
 
     // Validate Login logic
+    let flag = false
     if (!validateName(firstName)) {
-      setRegisterLoading(false)
-      return
+      setIsInvalidNames(true)
+      flag = true
     }
 
     if (!validateName(lastName)) {
-      setRegisterLoading(false)
-      return
+      setIsInvalidNames(true)
+      flag = true
     }
 
     if (!validateEmail(email)) {
       setIsInvalidEmail(true)
-      setRegisterLoading(false)
-      return
+      flag = true
     }
 
     if (!validatePassword(password)) {
       setIsInvalidPassword(true)
-      setRegisterLoading(false)
-      return
+      flag = true
     }
 
     if (!validatePassword(confirmPassword)) {
       setIsInvalidPassword(true)
-      setRegisterLoading(false)
-      return
+      flag = true
     }
 
     if (!matchPassword(password, confirmPassword)) {
       setPasswordsMatch(true)
+      flag = true
+    }
+
+    if (flag) {
       setRegisterLoading(false)
       return
     }
@@ -92,16 +96,26 @@ export default function RegistrationScreen() {
     const [data, success] = await register(firstName, lastName, email, password)
     if (success) {
       console.debug('Registration Successful')
-      setUserData(data)
-      router.replace('/entry')
-      setRegisterLoading(false)
-      return
+      
+      // Send Login Request
+      const [data, success] = await login(email, password)
+      if (success) {
+        console.debug('Login Successful')
+        setStoreData(data)
+        router.replace('/entry')
+        setRegisterLoading(false)
+        return
+      } else {
+        console.error('Login Failed')
+      }
     }
+    console.log("data:", data)
 
-    setIsInvalidEmail(true)
-    setIsInvalidPassword(true)
+    console.debug('Registration Failed')
+    setAccountExists(true)
     setRegisterLoading(false)
   }
+
   const [showPassword, setShowPassword] = useState(false)
   const handleState = () => {
     setShowPassword((showState) => {
@@ -110,7 +124,7 @@ export default function RegistrationScreen() {
   }
 
   useEffect(() => {
-    setIsInvalidNames(!validateName(firstName) || !validateName(lastName))
+    setIsInvalidNames(!validName(firstName) || !validName(lastName))
   }, [firstName, lastName])
 
   useEffect(() => {
@@ -200,7 +214,7 @@ export default function RegistrationScreen() {
             </Box>
           </FormControl>
           <FormControl
-            isInvalid={isInvalidEmail}
+            isInvalid={isInvalidEmail || accountExists}
             size="md"
             isDisabled={false}
             isReadOnly={false}
@@ -216,13 +230,14 @@ export default function RegistrationScreen() {
                   type="text"
                   placeholder="email"
                   value={email}
-                  onChangeText={(text) => setEmail(text)}
+                  onChangeText={(text) => setEmail(text.toLowerCase())}
                 />
               </Input>
               <FormControlError>
                 <FormControlErrorIcon as={AlertCircleIcon} />
                 <FormControlErrorText>
-                Invalid Email.
+                {isInvalidEmail ? "Invalid Email.  " : ""}
+                {accountExists ? "Account already exists." : ""}
                 </FormControlErrorText>
               </FormControlError>
             </Box>
@@ -253,7 +268,8 @@ export default function RegistrationScreen() {
               <FormControlError>
                 <FormControlErrorIcon as={AlertCircleIcon} />
                 <FormControlErrorText>
-                  Invalid Password.
+                  {isInvalidPassword ? "Invalid Password.  " : ""}
+                  {passwordsMatch ? "" : "Passwords do not match."}
                 </FormControlErrorText>
               </FormControlError>
             </Box>
@@ -275,7 +291,8 @@ export default function RegistrationScreen() {
               <FormControlError>
                 <FormControlErrorIcon as={AlertCircleIcon} />
                 <FormControlErrorText>
-                  Invalid Password.
+                  {passwordsMatch ? "" : "Passwords do not match."}
+                  {isInvalidPassword ? "Invalid Password.  " : ""}
                 </FormControlErrorText>
               </FormControlError>
             </Box>

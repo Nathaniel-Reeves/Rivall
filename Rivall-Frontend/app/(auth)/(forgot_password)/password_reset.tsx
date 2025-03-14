@@ -13,11 +13,12 @@ import { ResetPasswordInput } from './reset_password_input';
 
 export default function ForgotPasswordScreens() {
   const [step, setStep] = useState('email')
-  const [email, setEmail] = useState('')
-  const [codeSent, setCodeSent] = useState('none')
+  const [email, setEmail] = useState('nathaniel.jacob.reeves@gmail.com')
+  const [codeSentState, setCodeSentState] = useState('none')
   const [code, setCode] = useState('')
-  const [codeValidated, setCodeValidated] = useState('none')
+  const [codeValidatedState, setCodeValidatedState] = useState('none')
   const [resetPasswordState, setResetPasswordState] = useState('none')
+  const [password, setPassword] = useState('')
 
   return (
     <ScrollView
@@ -50,9 +51,9 @@ export default function ForgotPasswordScreens() {
             {step === 'reset' ? 'Lets reset your password!' : ''}
           </Text>
         </Box>
-        {step === 'email' ? <EmailInput email={email} setEmail={setEmail}/> : null}
-        {/* {step === 'code' ? <VerificationCodeInput code={code} setEmail={setCode}/> : null}
-        {step === 'reset' ? <ResetPasswordInput password={password} setEmail={setPassword}/> : null} */}
+        {step === 'email' ? <EmailInput setStep={setStep} email={email} setEmail={setEmail} codeSentState={codeSentState} setCodeSentState={setCodeSentState}/> : null}
+        {step === 'code' ? <VerificationCodeInput setStep={setStep} code={code} setCode={setCode} codeValidatedState={codeValidatedState} setCodeValidatedState={setCodeValidatedState} codeSentState={codeSentState} setCodeSentState={setCodeSentState} email={email}/> : null}
+        {step === 'reset' ? <ResetPasswordInput setStep={setStep} password={password} setPassword={setPassword} resetPasswordState={resetPasswordState} setResetPasswordState={setResetPasswordState}/> : null}
       </Card>
     </ScrollView>
   );

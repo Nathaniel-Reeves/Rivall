@@ -31,7 +31,7 @@ func New() *mux.Router {
 	privateRouter.Use(middleware.AuthMiddleware)
 
 	privateRouter.HandleFunc("/users/{user_id}", users.GetUser).Methods(http.MethodGet)
-	privateRouter.HandleFunc("/auth/recovery/{user_id}/reset-password", auth.UpdateUserPassword).Methods(http.MethodPost)
+	privateRouter.HandleFunc("/auth/recovery/{user_id}/reset-password", auth.UpdateUserPassword).Methods(http.MethodPut)
 	privateRouter.HandleFunc("/auth/{user_id}/refresh", auth.RenewAccessToken).Methods(http.MethodPost)
 	privateRouter.HandleFunc("/auth/{user_id}/logout", auth.LogoutUser).Methods(http.MethodDelete)
 
