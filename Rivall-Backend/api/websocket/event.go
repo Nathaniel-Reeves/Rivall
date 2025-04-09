@@ -21,7 +21,12 @@ type Event struct {
 type EventHandler func(event Event, c *Client) error
 
 const (
+	// Action Events
 	EventSendMessage = "send_message"
-	EventNewMessage  = "new_message"
 	EventCreateGroup = "create_group"
+
+	// Don't forget to add new action events to the setupEventHandlers func in manager.go
+
+	// Listen Events
+	EventNewMessage = "new_message"
 )

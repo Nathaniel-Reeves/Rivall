@@ -137,7 +137,7 @@ func AcceptGroupRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Add the group to the user's groups and update the message request status
-	err2 := db.AcceptUserMessageGroupRequest(body["user_id"][0], groupID)
+	err2 := db.AcceptUserGroupRequest(body["user_id"][0], groupID)
 	if err2 != nil {
 		log.Error().Err(err2).Msg("Failed to accept group request")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -181,7 +181,7 @@ func RejectGroupRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update the group request status
-	err2 := db.RejectUserMessageGroupRequest(body["user_id"][0], body["group_id"][0])
+	err2 := db.RejectUserGroupRequest(body["user_id"][0], body["group_id"][0])
 	if err2 != nil {
 		log.Error().Err(err2).Msg("Failed to reject group request")
 		w.WriteHeader(http.StatusInternalServerError)

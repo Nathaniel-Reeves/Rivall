@@ -3,7 +3,7 @@ package models
 import (
 	"Rivall-Backend/globals"
 	"context"
-	"time"
+	"errors"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/rs/zerolog/log"
@@ -20,7 +20,7 @@ User struct represents a user in the system
 	"email": "email@email.com",
 	"password": "password",
 	"image": "base64 encoded image",
-	"groups": [<message_group>],
+	"groups": [<group>],
 	"contacts": [<user>]
 }
 */
@@ -34,23 +34,23 @@ type User struct {
 	Email        string          `json:"email"         bson:"email"`
 	Password     string          `json:"password" bson:"password"`
 	AvatarImage  string          `json:"avatar_image"  bson:"avatar_image"`
-	GroupIDs     []bson.ObjectID `bson:"groups_ids"`
+	GroupIDs     []bson.ObjectID `bson:"group_ids"`
 	ContactIDs   []bson.ObjectID `bson:"contact_ids"`
 	OTP          string          `json:"otp"`
 	RefreshToken string          `json:"refresh_token" bson:"refresh_token"`
 	// Contacts are not stored on the database, they are fetched from the contact_ids
-	Contacts             []Contact             `json:"contacts"      bson:"omitempty"`
-	MessageGroupRequests []MessageGroupRequest `json:"message_group_request_ids" bson:"message_group_request_ids"`
+	Contacts      []Contact      `json:"contacts"      bson:"omitempty"`
+	GroupRequests []GroupRequest `json:"group_requests" bson:"group_requests"`
 }
 
-type MessageGroupRequest struct {
-	ID            bson.ObjectID `json:"id"        bson:"id"`
-	SendUserID    bson.ObjectID `json:"send_user_id" bson:"send_user_id"`
-	RecieveUserID bson.ObjectID `json:"recieve_user_id" bson:"recieve_user_id"`
-	GroupID       bson.ObjectID `json:"group_id"  bson:"group_id"`
-	Message       string        `json:"message" bson:"message"`
-	Timestamp     string        `json:"timestamp" bson:"timestamp"`
-	Status        int8          `json:"status" bson:"status"`
+type GroupRequest struct {
+	ID            bson.ObjectID  `json:"_id"        bson:"_id"`
+	SendUserID    bson.ObjectID  `json:"send_user_id" bson:"send_user_id"`
+	RecieveUserID bson.ObjectID  `json:"recieve_user_id" bson:"recieve_user_id"`
+	GroupID       bson.ObjectID  `json:"group_id"  bson:"group_id"`
+	Message       string         `json:"message" bson:"message"`
+	Timestamp     bson.Timestamp `json:"timestamp" bson:"timestamp"`
+	Status        int8           `json:"status" bson:"status"`
 }
 
 // Status Codes
@@ -104,20 +104,20 @@ func ReadByUserId(id string) User {
 	}
 
 	// fetch message group requests
-	for _, requests := range result.MessageGroupRequests {
-		request := ReadMessageGroupRequestById(requests.ID.Hex())
+	for _, requests := range result.GroupRequests {
+		request := ReadGroupRequestById(requests.ID.Hex())
 		if request.ID == bson.NilObjectID {
 			log.Error().Msg("Failed to read message group request")
 			continue
 		}
-		result.MessageGroupRequests = append(result.MessageGroupRequests, request)
+		result.GroupRequests = append(result.GroupRequests, request)
 	}
 
 	return result
 }
 
-func ReadMessageGroupRequestById(id string) MessageGroupRequest {
-	var result MessageGroupRequest
+func ReadGroupRequestById(id string) GroupRequest {
+	var result GroupRequest
 
 	log.Debug().Msgf("Reading message group request with ID '%v'", id)
 	i, _ := bson.ObjectIDFromHex(id)
@@ -177,6 +177,8 @@ func CreateUser(user User) error {
 	// set default empty arrays
 	user.ContactIDs = []bson.ObjectID{}
 	user.GroupIDs = []bson.ObjectID{}
+	user.Contacts = []Contact{}
+	user.GroupRequests = []GroupRequest{}
 
 	// remove contacts from user object
 
@@ -266,30 +268,61 @@ func CreateUserContact(userID string, contactID string) error {
 	return err
 }
 
-func CreateUserMessageRequest(senderUserID string, recieverUserID string, groupID string, message string) error {
+func CreateUserMessageRequest(
+	senderUserID string,
+	recieverUserID string,
+	groupID string,
+	message string,
+) error {
 	collection := globals.MongoClient.Database(database).Collection(CollectionName)
 
-	i, _ := bson.ObjectIDFromHex(senderUserID)
-	j, _ := bson.ObjectIDFromHex(groupID)
-	k, _ := bson.ObjectIDFromHex(recieverUserID)
-	request := MessageGroupRequest{
+	i, err := bson.ObjectIDFromHex(senderUserID)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to convert sender user ID")
+		return err
+	}
+
+	j, err := bson.ObjectIDFromHex(groupID)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to convert group ID")
+		return err
+	}
+
+	k, err := bson.ObjectIDFromHex(recieverUserID)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to convert reciever user ID")
+		return err
+	}
+
+	request := GroupRequest{
+		ID:            bson.NewObjectID(),
 		SendUserID:    i,
 		RecieveUserID: k,
 		GroupID:       j,
 		Message:       message,
-		Timestamp:     time.Now().String(),
+		Timestamp:     bson.Timestamp{},
 		Status:        0,
 	}
 
-	inserted, err := collection.InsertOne(context.Background(), request)
+	updateResult, err := collection.UpdateOne(
+		context.Background(),
+		bson.D{{Key: "_id", Value: k}},
+		bson.D{{Key: "$push", Value: bson.D{{Key: "group_requests", Value: request}}}},
+	)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create new message group request")
+		return err
 	}
-	log.Info().Msgf("Inserted message group request with ID %v", inserted.InsertedID)
+	if updateResult.MatchedCount == 0 || updateResult.ModifiedCount == 0 {
+		log.Error().Msgf("Matched %d documents and modified %d documents", updateResult.MatchedCount, updateResult.ModifiedCount)
+		return errors.New("Failed to create new message group request")
+	}
+
+	log.Info().Msgf("Inserted message group request for user: %v", recieverUserID)
 	return err
 }
 
-func AcceptUserMessageGroupRequest(userID string, groupID string) error {
+func AcceptUserGroupRequest(userID string, groupID string) error {
 	collection := globals.MongoClient.Database(database).Collection(CollectionName)
 
 	i, _ := bson.ObjectIDFromHex(groupID)
@@ -316,7 +349,7 @@ func AcceptUserMessageGroupRequest(userID string, groupID string) error {
 	return err
 }
 
-func RejectUserMessageGroupRequest(userID string, groupID string) error {
+func RejectUserGroupRequest(userID string, groupID string) error {
 	collection := globals.MongoClient.Database(database).Collection(CollectionName)
 
 	i, _ := bson.ObjectIDFromHex(groupID)

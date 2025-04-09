@@ -9,13 +9,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type CreateGroupEvent struct {
+type CreateGroupPayload struct {
 	GroupName string   `json:"group_name"`
 	UserIDs   []string `json:"user_ids"`
 	Message   string   `json:"message"`
 }
 
-type JoinGroupRequestEvent struct {
+type JoinGroupRequest struct {
 	GroupID string    `json:"group_id"`
 	UserID  string    `json:"user_id"`
 	Message string    `json:"message"`
@@ -24,14 +24,14 @@ type JoinGroupRequestEvent struct {
 
 func CreateGroupHandler(event Event, c *Client) error {
 	// Marshal Payload into wanted format
-	var chatevent CreateGroupEvent
+	var chatevent CreateGroupPayload
 	if err := json.Unmarshal(event.Payload, &chatevent); err != nil {
 		log.Error().Err(err).Msg("bad payload in request")
 		return err
 	}
 
 	// Get Admin UserID, Admin is the user creating the group
-	AdminUserID := c.userID
+	AdminUserID := event.UserID
 
 	// Confirm Users are legitimate
 	for _, userID := range chatevent.UserIDs {
@@ -48,6 +48,8 @@ func CreateGroupHandler(event Event, c *Client) error {
 		return err
 	}
 
+	log.Info().Msgf(`Created group with ID: %v`, groupID)
+
 	// Add a Request to all users requested to be added to the group
 	for _, userID := range chatevent.UserIDs {
 		if err := db.CreateUserMessageRequest(AdminUserID, userID, groupID, chatevent.Message); err != nil {
@@ -57,11 +59,11 @@ func CreateGroupHandler(event Event, c *Client) error {
 	}
 
 	// Prepare an Outgoing Message to others
-	var broadMessage JoinGroupRequestEvent
+	var broadMessage JoinGroupRequest
 
 	broadMessage.Sent = time.Now()
 	broadMessage.Message = chatevent.Message
-	// broadMessage.GroupID = groupID
+	broadMessage.GroupID = groupID
 
 	data, err := json.Marshal(broadMessage)
 	if err != nil {
@@ -73,6 +75,8 @@ func CreateGroupHandler(event Event, c *Client) error {
 	var outgoingEvent Event
 	outgoingEvent.Payload = data
 	outgoingEvent.Type = EventNewMessage
+	outgoingEvent.GroupID = groupID
+	outgoingEvent.UserID = AdminUserID
 
 	// Broadcast to all other Clients in the Group
 	for client := range c.Manager().Clients() {

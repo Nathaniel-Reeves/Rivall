@@ -49,6 +49,8 @@ func SendMessageHandler(event Event, c *Client) error {
 	var outgoingEvent Event
 	outgoingEvent.Payload = data
 	outgoingEvent.Type = EventNewMessage
+	outgoingEvent.GroupID = event.GroupID
+	outgoingEvent.UserID = event.UserID
 
 	// Broadcast to all other Clients in the Group
 	for client := range c.Manager().Clients() {

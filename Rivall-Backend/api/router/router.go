@@ -32,16 +32,15 @@ func New() *mux.Router {
 	privateRouter.HandleFunc("/auth/recovery/{user_id}/reset-password", resources.UpdateUserPassword).Methods(http.MethodPut)
 	privateRouter.HandleFunc("/auth/{user_id}/refresh", resources.RenewAccessToken).Methods(http.MethodPost)
 	privateRouter.HandleFunc("/auth/{user_id}/logout", resources.LogoutUser).Methods(http.MethodDelete)
+	privateRouter.HandleFunc("/users/{user_id}", resources.GetUser).Methods(http.MethodGet)
+	privateRouter.HandleFunc("/users/{user_id}/contacts", resources.PostUserContact).Methods(http.MethodPost)
+	privateRouter.HandleFunc("/users/{user_id}/contacts", resources.DeleteUserContact).Methods(http.MethodDelete)
+	privateRouter.HandleFunc("/groups", resources.WriteNewMessageGroup).Methods(http.MethodPost)
+	privateRouter.HandleFunc("/groups/{group_id}/user-request", resources.AcceptGroupRequest).Methods(http.MethodPut)
+	privateRouter.HandleFunc("/groups/{group_id}/user-request", resources.RejectGroupRequest).Methods(http.MethodDelete)
 
 	privateWSRouter := r.PathPrefix("/api/v1/ws").Subrouter()
-
 	privateWSRouter.HandleFunc("/connect/{user_id}", websocket.WSManager.ServeWS)
-	privateWSRouter.HandleFunc("/users/{user_id}", resources.GetUser).Methods(http.MethodGet)
-	privateWSRouter.HandleFunc("/users/{user_id}/contacts", resources.PostUserContact).Methods(http.MethodPost)
-	privateWSRouter.HandleFunc("/users/{user_id}/contacts", resources.DeleteUserContact).Methods(http.MethodDelete)
-	privateWSRouter.HandleFunc("/groups", resources.WriteNewMessageGroup).Methods(http.MethodPost)
-	privateWSRouter.HandleFunc("/groups/{group_id}/user-request", resources.AcceptGroupRequest).Methods(http.MethodPut)
-	privateWSRouter.HandleFunc("/groups/{group_id}/user-request", resources.RejectGroupRequest).Methods(http.MethodDelete)
 
 	// Middlewares
 	r.Use(middleware.RequestID)

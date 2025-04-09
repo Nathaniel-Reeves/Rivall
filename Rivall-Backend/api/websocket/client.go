@@ -50,10 +50,6 @@ func (c *Client) Manager() *Manager {
 	return c.manager
 }
 
-func (c *Client) Chatroom() string {
-	return c.chatroom
-}
-
 func (c *Client) Send(message Event) {
 	c.Egress <- message
 }
@@ -96,7 +92,7 @@ func (c *Client) readMessages() {
 		var request Event
 		if err := json.Unmarshal(payload, &request); err != nil {
 			log.Err(err).Msg("error unmarshaling message")
-			break // Breaking the connection here might be harsh xD
+			// break // Breaking the connection here might be harsh xD
 		}
 		// Route the Event
 		if err := c.manager.routeEvent(request, c); err != nil {
@@ -108,7 +104,7 @@ func (c *Client) readMessages() {
 // pongHandler is used to handle PongMessages for the Client
 func (c *Client) pongHandler(pongMsg string) error {
 	// Current time + Pong Wait time
-	log.Debug().Msg("pong")
+	// log.Debug().Msg("pong")
 	return c.connection.SetReadDeadline(time.Now().Add(pongWait))
 }
 
@@ -147,7 +143,7 @@ func (c *Client) writeMessages() {
 			}
 			log.Debug().Msg("message sent")
 		case <-ticker.C:
-			log.Debug().Msg("ping")
+			// log.Debug().Msg("ping")
 			// Send the Ping
 			if err := c.connection.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
 				log.Info().Msg("ping failed")
