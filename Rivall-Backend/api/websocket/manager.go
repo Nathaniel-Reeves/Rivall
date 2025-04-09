@@ -58,6 +58,10 @@ type Manager struct {
 	otps RetentionMap
 }
 
+func (m *Manager) Clients() map[*Client]bool {
+	return m.clients
+}
+
 // NewManager is used to initalize all the values inside the manager
 func NewManager(ctx context.Context) *Manager {
 	log.Info().Msg("Creating new Websocket Manager")
@@ -75,7 +79,7 @@ func NewManager(ctx context.Context) *Manager {
 // setupEventHandlers configures and adds all handlers
 func (m *Manager) setupEventHandlers() {
 	m.handlers[EventSendMessage] = SendMessageHandler
-	m.handlers[EventChangeRoom] = ChatRoomHandler
+	m.handlers[EventCreateGroup] = CreateGroupHandler
 }
 
 // routeEvent is used to make sure the correct event goes into the correct handler
@@ -200,3 +204,5 @@ func (m *Manager) RemoveClientByUserID(userID string) {
 
 	log.Warn().Msg("Client not found")
 }
+
+var WSManager = NewManager(context.Background())

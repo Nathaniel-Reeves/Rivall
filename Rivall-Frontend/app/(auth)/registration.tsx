@@ -93,27 +93,26 @@ export default function RegistrationScreen() {
     }
 
     // Send Register Request
-    const [data, success] = await register(firstName, lastName, email, password)
-    if (success) {
-      console.debug('Registration Successful')
-      
-      // Send Login Request
-      const [data, success] = await login(email, password)
-      if (success) {
-        console.debug('Login Successful')
-        setStoreData(data)
-        router.replace('/entry')
-        setRegisterLoading(false)
-        return
-      } else {
-        console.error('Login Failed')
-      }
+    const res1 = await register(firstName, lastName, email, password)
+    if (res1 === null) {
+      console.debug('Registration Failed')
+      setAccountExists(res1.status === 403)
+      setRegisterLoading(false)
+      return
     }
-    console.log("data:", data)
 
-    console.debug('Registration Failed')
-    setAccountExists(true)
+    const res2 = await login(email, password)
+    if (res2 === null) {
+      console.debug('Login Failed')
+      setRegisterLoading(false)
+      return
+    }
+
+    console.debug('Login Successful')
+    setStoreData(res2.data)
     setRegisterLoading(false)
+    router.replace('/entry/home')
+    return
   }
 
   const [showPassword, setShowPassword] = useState(false)

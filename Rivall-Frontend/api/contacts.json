@@ -1,0 +1,146 @@
+[
+    {
+        "_id": "5f5b3b3b4f3b4b3b4b3b4c1",
+        "group_name": "",
+        "num_members": 1,
+        "is_challenge": false,
+        "challenge_start_date": "2025-03-17T21:37:50Z",
+        "unread_count": 3,
+        "last_message": {
+            "_id": "vaivb923n915764521",
+            "first_name": "Alice",
+            "last_name": "Johnson",
+            "avatar_image": "https://randomuser.me/api/portraits",
+            "avatar_color": "#1E90FF",
+            "message": "Hello, how are you?",
+            "timestamp": "2025-03-17T21:37:50Z",
+            "unread": true
+        }
+    },
+    {
+        "_id": "5f5b3b3b4f3b4b3b4b3b4c2",
+        "group_name": "",
+        "num_members": 1,
+        "is_challenge": false,
+        "challenge_start_date": "",
+        "unread_count": 0,
+        "last_message": {
+            "_id": "msg123456789",
+            "first_name": "Bob",
+            "last_name": "Brown",
+            "avatar_image": "https://randomuser.me/api/portraits",
+            "avatar_color": "#228B22",
+            "message": "Did you check out the new cafe downtown?",
+            "timestamp": "2025-03-17T21:37:50Z",
+            "unread": false
+        }
+    },
+    {
+        "_id": "5f5b3b3b4f3b4b3b4b3b4c3",
+        "group_name": "",
+        "num_members": 1,
+        "is_challenge": false,
+        "challenge_start_date": "",
+        "unread_count": 1,
+        "last_message": {
+            "_id": "msg987654321",
+            "first_name": "Charlie",
+            "last_name": "Davis",
+            "avatar_image": "https://randomuser.me/api/portraits",
+            "avatar_color": "#8A2BE2",
+            "message": "Let me know if you need help with the project.",
+            "timestamp": "2025-03-17T21:37:50Z",
+            "unread": true
+        }
+    },
+    {
+        "_id": "5f5b3b3b4f3b4b3b4b3b4c4",
+        "group_name": "",
+        "num_members": 1,
+        "is_challenge": false,
+        "challenge_start_date": "",
+        "unread_count": 0,
+        "last_message": {
+            "_id": "msg456789123",
+            "first_name": "Diana",
+            "last_name": "Miller",
+            "avatar_image": "https://randomuser.me/api/portraits",
+            "avatar_color": "#FF4500",
+            "message": "I just finished the book you recommended. It was amazing!",
+            "timestamp": "2025-03-17T21:37:50Z",
+            "unread": false
+        }
+    },
+    {
+        "_id": "5f5b3b3b4f3b4b3b4b3b4c5",
+        "group_name": "",
+        "num_members": 1,
+        "is_challenge": false,
+        "challenge_start_date": "",
+        "unread_count": 2,
+        "last_message": {
+            "_id": "msg654321987",
+            "first_name": "Eve",
+            "last_name": "Wilson",
+            "avatar_image": "https://randomuser.me/api/portraits",
+            "avatar_color": "#FF1493",
+            "message": "Can we reschedule our meeting to tomorrow?",
+            "timestamp": "2025-03-17T21:37:50Z",
+            "unread": true
+        }
+    },
+    {
+        "_id": "5f5b3b3b4f3b4b3b4b3b4c6",
+        "group_name": "Weekend Hikers",
+        "num_members": 5,
+        "is_challenge": true,
+        "challenge_start_date": "2025-03-17T21:37:50Z",
+        "unread_count": 0,
+        "last_message": {
+            "_id": "msg321654987",
+            "first_name": "Frank",
+            "last_name": "Moore",
+            "avatar_image": "https://randomuser.me/api/portraits",
+            "avatar_color": "#2E8B57",
+            "message": "The weather is perfect for a hike this weekend.",
+            "timestamp": "2025-03-17T21:37:50Z",
+            "unread": false
+        }
+    },
+    {
+        "_id": "5f5b3b3b4f3b4b3b4b3b4c7",
+        "group_name": "Team Dinner",
+        "num_members": 8,
+        "is_challenge": true,
+        "challenge_start_date": "2025-03-17T21:37:50Z",
+        "unread_count": 4,
+        "last_message": {
+            "_id": "msg789123456",
+            "first_name": "Grace",
+            "last_name": "Taylor",
+            "avatar_image": "https://randomuser.me/api/portraits",
+            "avatar_color": "#9932CC",
+            "message": "Don't forget about the team dinner on Friday.",
+            "timestamp": "2025-03-17T21:37:50Z",
+            "unread": true
+        }
+    },
+    {
+        "_id": "5f5b3b3b4f3b4b3b4b3b4c8",
+        "group_name": "",
+        "num_members": 1,
+        "is_challenge": false,
+        "challenge_start_date": "",
+        "unread_count": 1,
+        "last_message": {
+            "_id": "msg852963741",
+            "first_name": "Hank",
+            "last_name": "Anderson",
+            "avatar_image": "https://randomuser.me/api/portraits",
+            "avatar_color": "#4682B4",
+            "message": "I found the solution to the issue we discussed!",
+            "timestamp": "2025-03-17T21:37:50Z",
+            "unread": true
+        }
+    }
+]

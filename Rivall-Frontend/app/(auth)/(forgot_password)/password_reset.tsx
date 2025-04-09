@@ -13,7 +13,7 @@ import { ResetPasswordInput } from './reset_password_input';
 
 export default function ForgotPasswordScreens() {
   const [step, setStep] = useState('email')
-  const [email, setEmail] = useState('nathaniel.jacob.reeves@gmail.com')
+  const [email, setEmail] = useState('')
   const [codeSentState, setCodeSentState] = useState('none')
   const [code, setCode] = useState('')
   const [codeValidatedState, setCodeValidatedState] = useState('none')

@@ -42,7 +42,7 @@ export const useUserStore = create<State & Actions>()(
     },
     setUserData: (refreshUser: Partial<User>) => set({
       user: { 
-        id: refreshUser.id || '',
+        _id: refreshUser._id || '',
         token: refreshUser.token || '',
         first_name: refreshUser.first_name || '',
         last_name: refreshUser.last_name || '',

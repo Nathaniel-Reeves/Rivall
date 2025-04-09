@@ -14,6 +14,9 @@ export default function RootLayout() {
         <BackgroundGradientWrapper>
           <Stack screenOptions={{
             headerShown: false,
+            statusBarTranslucent: true,
+            statusBarBackgroundColor: 'transparent',
+            statusBarStyle: 'dark',
             contentStyle: { backgroundColor: 'transparent' }, // Ensure the background is transparent
           }}>
             <Stack.Screen name="index" options={{ title: 'Welcome' }} />

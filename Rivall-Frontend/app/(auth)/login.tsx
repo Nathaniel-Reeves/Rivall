@@ -38,8 +38,12 @@ export default function LoginScreen() {
   const [isInvalidEmail, setIsInvalidEmail] = useState(false)
   const [isInvalidPassword, setIsInvalidPassword] = useState(false)
   
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  // const [email, setEmail] = useState("")
+  // const [password, setPassword] = useState("")
+
+  // For testing purposes
+  const [email, setEmail] = useState("nathaniel.jacob.reeves@gmail.com")
+  const [password, setPassword] = useState("password")
 
   const [loginLoading, setLoginLoading] = useState(false)
 
@@ -65,18 +69,19 @@ export default function LoginScreen() {
     }
 
     // Send Login Request
-    const [data, success] = await login(email, password)
-    if (success) {
-      console.debug('Login Successful')
-      setStoreData(data)
-      router.replace('/entry')
+    const res = await login(email, password)
+    if (res === null) {
+      console.debug('Login Failed')
+      setIsInvalidEmail(true)
+      setIsInvalidPassword(true)
       setLoginLoading(false)
       return
     }
 
-    setIsInvalidEmail(true)
-    setIsInvalidPassword(true)
+    console.debug('Login Successful')
+    setStoreData(res.data)
     setLoginLoading(false)
+    router.replace('/entry/home')
   }
 
   const [showPassword, setShowPassword] = useState(false)

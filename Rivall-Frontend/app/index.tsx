@@ -65,6 +65,6 @@ export default function App() {
 
   // Redirect user to home screen
   return (
-    <Redirect href="/entry"/>
+    <Redirect href="/entry/home"/>
   )
 }

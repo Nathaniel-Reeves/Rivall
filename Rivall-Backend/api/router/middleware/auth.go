@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"Rivall-Backend/api/global"
+	"Rivall-Backend/globals"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
@@ -31,7 +31,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
 
 		// get token claims
-		claims, ok := global.SessionManager.ValidateJWTToken(tokenString)
+		claims, ok := globals.SessionManager.ValidateJWTToken(tokenString)
 		if !ok {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("Invalid token"))
@@ -47,7 +47,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		// check if session exists
-		session, ok := global.SessionManager.GetSession(tokenString)
+		session, ok := globals.SessionManager.GetSession(tokenString)
 		if !ok {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("Invalid token: token not found"))

@@ -44,21 +44,17 @@ export function EmailInput({ setStep, email, setEmail, codeSentState, setCodeSen
     }
 
     // Send Password Recovery Code to Email
-    const [data, success] = await sendCodeToEmail(email)
-    if (success) {
-      console.debug('Email Sent')
-      setCodeSentState('sent')
-      setStep('code')
+    const res = await sendCodeToEmail(email)
+    if (res === null) {
+      console.debug('Request Failed')
+      setCodeSentState('failed')
+      setAccountDoesntExist(true)
       return
     }
 
-    if (data === 'User not found') {
-      console.debug('User not found')
-      setAccountDoesntExist(true)
-    }
-
-    console.debug('Request Failed')
-    setCodeSentState('failed')
+    console.debug('Email Sent')
+    setCodeSentState('sent')
+    setStep('code')
   }
 
   useEffect(() => {

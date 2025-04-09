@@ -60,17 +60,16 @@ export function ResetPasswordInput({ password, setPassword, resetPasswordState, 
     }
 
     // Send Reset Password Request
-    const [data, success] = await resetPassword(state, password)
-    if (success) {
-      console.debug('Password Reset Successful')
-      setResetPasswordState('success')
-      router.replace('/entry')
+    const res = await resetPassword(state, password)
+    if (res === null) {
+      console.debug('Password Reset Failed')
+      setResetPasswordState('error')
       return
     }
 
-    console.debug('Password Reset Failed')
-    console.debug(data)
-    setResetPasswordState('failed')
+    console.debug('Password Reset Successful')
+    setResetPasswordState('success')
+    router.replace('/entry/home')
   }
 
   const [showPassword, setShowPassword] = useState(false)

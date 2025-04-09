@@ -19,7 +19,8 @@ type Client struct {
 	// manager is the manager used to manage the client
 	manager *Manager
 	// egress is used to avoid concurrent writes on the WebSocket
-	egress chan Event
+	Egress chan Event
+
 	// chatroom is used to know what room user is in
 	chatroom string
 
@@ -40,9 +41,21 @@ func NewClient(conn *websocket.Conn, manager *Manager, userID string) *Client {
 	return &Client{
 		connection: conn,
 		manager:    manager,
-		egress:     make(chan Event),
+		Egress:     make(chan Event),
 		userID:     userID,
 	}
+}
+
+func (c *Client) Manager() *Manager {
+	return c.manager
+}
+
+func (c *Client) Chatroom() string {
+	return c.chatroom
+}
+
+func (c *Client) Send(message Event) {
+	c.Egress <- message
 }
 
 // readMessages will start the client to read messages and handle them
@@ -111,7 +124,7 @@ func (c *Client) writeMessages() {
 
 	for {
 		select {
-		case message, ok := <-c.egress:
+		case message, ok := <-c.Egress:
 			// Ok will be false Incase the egress channel is closed
 			if !ok {
 				// Manager has closed this connection channel, so communicate that to frontend

@@ -41,17 +41,18 @@ export function VerificationCodeInput({ setStep, code, setCode, codeValidatedSta
     setCodeSentState('pending')
 
     // Send Password Recovery Code to Email
-    const [data, success] = await sendCodeToEmail(email)
-    if (success) {
-      console.debug('Email Sent')
-      setCodeSentState('sent')
-      setCodeResent(true)
+    const res = await sendCodeToEmail(email)
+    if (res === null) {
+      console.debug('Request Failed')
       return
     }
 
-    console.debug('Request Failed')
-    console.debug(data)
-    console.debug(success)
+    if (200 <= res.status && res.status < 300) {
+      console.debug('Email Sent')
+      setCodeSentState('sent')
+      setCodeResent(true)
+    }
+    return
   }
 
   const handleSubmitCode = async () => {
@@ -67,22 +68,19 @@ export function VerificationCodeInput({ setStep, code, setCode, codeValidatedSta
     }
 
     // Test Code
-    const [data, success] = await validateAccountRecoveryCode(email, code)
-    if (success) {
-      console.debug('Code Valid')
-      setCodeValidatedState('validated')
-      setStoreData(data)
-      setStep('reset')
+    const res = await validateAccountRecoveryCode(email, code)
+    if (res === null) {
+      console.debug('Request Failed')
+      setCodeValidatedState('failed')
+      setIsInvalidCode(true)
       return
-    } else {
-      if (data === 'Invalid code') {
-        console.debug('Invalid Code')
-        setIsInvalidCode(true)
-      }
     }
 
-    console.debug('Code Failed')
-    setCodeValidatedState('failed')
+    console.debug('Code Valid')
+    setCodeValidatedState('validated')
+    setStoreData(res.data)
+    setStep('reset')
+    return
   }
 
   useEffect(() => {

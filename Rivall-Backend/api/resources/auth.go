@@ -1,6 +1,7 @@
-package auth
+package resources
 
 import (
+	db "Rivall-Backend/db"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,12 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"Rivall-Backend/api/websocket"
+	"Rivall-Backend/globals"
+
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/v2/bson"
-
-	globals "Rivall-Backend/api/global"
-	users "Rivall-Backend/api/resources/users"
 )
 
 type UserRes struct {
@@ -31,6 +32,129 @@ func getUserIDFromContext(ctx context.Context) (string, error) {
 		return "", errors.New("user ID not found in context")
 	}
 	return userID, nil
+}
+
+func RegisterNewUser(w http.ResponseWriter, r *http.Request) {
+	log.Info().Msg("POST new user")
+
+	// get user data
+	user := db.User{}
+	err := json.NewDecoder(r.Body).Decode(&user)
+	user.Email = strings.ToLower(user.Email)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to decode user, invalid JSON request")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Failed to decode user, invalid JSON request."))
+		return
+	}
+
+	// check user has all required fields
+	if user.FirstName == "" || user.LastName == "" || user.Email == "" || user.Password == "" {
+		log.Error().Msg("User must have all required fields")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("User must have all required fields."))
+		log.Error().Msg(user.FirstName)
+		log.Error().Msg(user.LastName)
+		log.Error().Msg(user.Email)
+		log.Error().Msg(user.Password)
+		return
+	}
+
+	// check user does not already exist
+	if db.ReadByUserEmail(user.Email).ID != bson.NilObjectID {
+		log.Error().Msg("User already exists")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("User already exists."))
+		return
+	}
+
+	// insert user data
+	err = db.CreateUser(user)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to insert user")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to insert user"))
+		return
+	}
+
+	// return success
+	w.WriteHeader(http.StatusCreated)
+}
+
+type LoginUserReq struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type LoginUserRes struct {
+	OTP                   string    `json:"otp"`
+	AccessToken           string    `json:"access_token"`
+	RefreshToken          string    `json:"refresh_token"`
+	AccessTokenExpiresAt  time.Time `json:"access_token_expires_at"`
+	RefreshTokenExpiresAt time.Time `json:"refresh_token_expires_at"`
+	User                  UserRes   `json:"user"`
+}
+
+func LoginUser(w http.ResponseWriter, r *http.Request) {
+	log.Info().Msg("GET user by username")
+
+	// get user data
+	userLogin := db.User{}
+	err := json.NewDecoder(r.Body).Decode(&userLogin)
+	userLogin.Email = strings.ToLower(userLogin.Email)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to decode user")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Failed to decode user"))
+		return
+	}
+
+	// get user from db
+	user := db.ReadByUserEmail(userLogin.Email)
+	if user.ID == bson.NilObjectID {
+		log.Warn().Msg("User not found")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("User not found"))
+		return
+	}
+
+	// check password
+	if !db.ComparePasswords(user.Password, userLogin.Password) {
+		log.Warn().Msg("Invalid password")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Invalid password"))
+		return
+	}
+
+	// Create Access Session
+	accessSession := globals.SessionManager.NewAccessSession(user.ID.Hex())
+
+	// Create Refresh Session
+	refreshSession := globals.SessionManager.NewRefreshSession(user.ID.Hex())
+
+	// Create OTP for websocket
+	user.OTP = websocket.WSManager.CreateOTP()
+
+	// Clean Response Data
+	su := UserRes{
+		ID:          user.ID.Hex(),
+		FirstName:   user.FirstName,
+		LastName:    user.LastName,
+		Email:       user.Email,
+		AvatarImage: user.AvatarImage,
+	}
+
+	res := LoginUserRes{
+		OTP:                   user.OTP,
+		AccessToken:           accessSession.Token,
+		RefreshToken:          refreshSession.Token,
+		AccessTokenExpiresAt:  accessSession.TokenExpiresAt,
+		RefreshTokenExpiresAt: refreshSession.TokenExpiresAt,
+		User:                  su,
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(res)
 }
 
 type RecoveryCodeReq struct {
@@ -52,7 +176,7 @@ func SendAccountRecoveryEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// check email is valid
-	if users.ReadByUserEmail(emailReq.Email).ID == bson.NilObjectID {
+	if db.ReadByUserEmail(emailReq.Email).ID == bson.NilObjectID {
 		log.Error().Msg("User not found")
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("User not found"))
@@ -67,7 +191,7 @@ func SendAccountRecoveryEmail(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("recovery_code", recoveryCode.Code).Msg("Recovery code sent")
 
 	// return success
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusCreated)
 }
 
 type RecoveryCodeValidationReq struct {
@@ -116,7 +240,7 @@ func ValidateAccountRecoveryCode(w http.ResponseWriter, r *http.Request) {
 
 	// login user
 	// get user from db
-	user := users.ReadByUserEmail(email)
+	user := db.ReadByUserEmail(email)
 	if user.ID == bson.NilObjectID {
 		log.Warn().Msg("User not found")
 		w.WriteHeader(http.StatusNotFound)
@@ -131,7 +255,7 @@ func ValidateAccountRecoveryCode(w http.ResponseWriter, r *http.Request) {
 	refreshSession := globals.SessionManager.NewRefreshSession(user.ID.Hex())
 
 	// Create OTP for websocket
-	user.OTP = globals.WSManager.CreateOTP()
+	user.OTP = websocket.WSManager.CreateOTP()
 
 	// Clean Response Data
 	su := UserRes{
@@ -152,6 +276,7 @@ func ValidateAccountRecoveryCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// return user
+	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(res)
 }
 
@@ -169,7 +294,7 @@ func UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get user data
-	user := users.User{}
+	user := db.User{}
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to decode user, invalid JSON request")
@@ -195,7 +320,7 @@ func UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// check user exists
-	userFromDB := users.ReadByUserId(user.ID.Hex())
+	userFromDB := db.ReadByUserId(user.ID.Hex())
 	if userFromDB.ID == bson.NilObjectID {
 		log.Error().Msg("User not found")
 		w.WriteHeader(http.StatusNotFound)
@@ -204,7 +329,7 @@ func UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// update password
-	err = users.UpdateUserPassword(user.ID.Hex(), user.Password)
+	err = db.UpdateUserPassword(user.ID.Hex(), user.Password)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to update password")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -213,125 +338,7 @@ func UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// return success
-	w.WriteHeader(http.StatusOK)
-}
-
-func RegisterNewUser(w http.ResponseWriter, r *http.Request) {
-	log.Info().Msg("POST new user")
-
-	// get user data
-	user := users.User{}
-	err := json.NewDecoder(r.Body).Decode(&user)
-	user.Email = strings.ToLower(user.Email)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to decode user, invalid JSON request")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Failed to decode user, invalid JSON request."))
-		return
-	}
-
-	// check user has all required fields
-	if user.FirstName == "" || user.LastName == "" || user.Email == "" || user.Password == "" {
-		log.Error().Msg("User must have all required fields")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("User must have all required fields."))
-		return
-	}
-
-	// check user does not already exist
-	if users.ReadByUserEmail(user.Email).ID != bson.NilObjectID {
-		log.Error().Msg("User already exists")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("User already exists."))
-		return
-	}
-
-	// insert user data
-	err = users.CreateUser(user)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to insert user")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to insert user"))
-		return
-	}
-
-	// return success
 	w.WriteHeader(http.StatusCreated)
-}
-
-type LoginUserReq struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-type LoginUserRes struct {
-	OTP                   string    `json:"otp"`
-	AccessToken           string    `json:"access_token"`
-	RefreshToken          string    `json:"refresh_token"`
-	AccessTokenExpiresAt  time.Time `json:"access_token_expires_at"`
-	RefreshTokenExpiresAt time.Time `json:"refresh_token_expires_at"`
-	User                  UserRes   `json:"user"`
-}
-
-func LoginUser(w http.ResponseWriter, r *http.Request) {
-	log.Info().Msg("GET user by username")
-
-	// get user data
-	userLogin := users.User{}
-	err := json.NewDecoder(r.Body).Decode(&userLogin)
-	userLogin.Email = strings.ToLower(userLogin.Email)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to decode user")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Failed to decode user"))
-		return
-	}
-
-	// get user from db
-	user := users.ReadByUserEmail(userLogin.Email)
-	if user.ID == bson.NilObjectID {
-		log.Warn().Msg("User not found")
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("User not found"))
-		return
-	}
-
-	// check password
-	if !users.ComparePasswords(user.Password, userLogin.Password) {
-		log.Warn().Msg("Invalid password")
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Invalid password"))
-		return
-	}
-
-	// Create Access Session
-	accessSession := globals.SessionManager.NewAccessSession(user.ID.Hex())
-
-	// Create Refresh Session
-	refreshSession := globals.SessionManager.NewRefreshSession(user.ID.Hex())
-
-	// Create OTP for websocket
-	user.OTP = globals.WSManager.CreateOTP()
-
-	// Clean Response Data
-	su := UserRes{
-		ID:          user.ID.Hex(),
-		FirstName:   user.FirstName,
-		LastName:    user.LastName,
-		Email:       user.Email,
-		AvatarImage: user.AvatarImage,
-	}
-
-	res := LoginUserRes{
-		OTP:                   user.OTP,
-		AccessToken:           accessSession.Token,
-		RefreshToken:          refreshSession.Token,
-		AccessTokenExpiresAt:  accessSession.TokenExpiresAt,
-		RefreshTokenExpiresAt: refreshSession.TokenExpiresAt,
-		User:                  su,
-	}
-
-	json.NewEncoder(w).Encode(res)
 }
 
 type RenewAccessTokenReq struct {
@@ -418,6 +425,7 @@ func RenewAccessToken(w http.ResponseWriter, r *http.Request) {
 		AccessTokenExpiresAt: accessSession.TokenExpiresAt,
 	}
 
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(res)
 }
 
@@ -452,5 +460,5 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	// Close Websocket Connection
-	globals.WSManager.RemoveClientByUserID(userID)
+	websocket.WSManager.RemoveClientByUserID(userID)
 }

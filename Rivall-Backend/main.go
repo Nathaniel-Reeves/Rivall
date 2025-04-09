@@ -9,32 +9,19 @@ import (
 	"syscall"
 	"time"
 
-	"Rivall-Backend/api/resources/websocket"
 	"Rivall-Backend/api/router"
 	"Rivall-Backend/config"
+	"Rivall-Backend/globals"
 	"Rivall-Backend/util/logger"
 	"Rivall-Backend/util/password_recovery"
 	"Rivall-Backend/util/session_manager"
 
-	"Rivall-Backend/api/global"
-
 	"github.com/go-playground/validator/v10"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
-
-//	@title			Rivall-Backend
-//	@version		1.0
-//	@description	This is a sample RESTful API with a CRUD
-
-//	@contact.name	Nathaniel Reeves
-//	@contact.url
-
-// @host		localhost:8080
-// @basePath	/v1
 
 func ConnectMongoDB(ctx context.Context, c *config.Conf) *mongo.Client {
 	// Connect to MongoDB
@@ -67,11 +54,6 @@ func DisconnectMongoDB(MongoClient *mongo.Client) {
 	log.Info().Msg("MongoDB disconnected")
 }
 
-var Logger *zerolog.Logger
-var Validator *validator.Validate
-var MongoClient *mongo.Client
-var JWTSecretKey string
-
 // func sendEmail() {
 // 	message := mail.NewMsg()
 // 	if err := message.From("rivall@gmail.com"); err != nil {
@@ -102,31 +84,20 @@ func main() {
 	// Initialize logger, validator, and config
 	c := config.New()
 	logLevel := c.Server.Debug
-	l := logger.New(logLevel, c)
-	v := validator.New()
-	pr := password_recovery.NewRecoveryRetentionMap(context.Background())
+	log := logger.New(logLevel, c)
+	val := validator.New()
 	log.Info().Msg("Building Rivall Backend API...")
 
 	// Initialize context
 	ctx := context.Background()
 
-	// Connect MongoDB
-	MongoClient := ConnectMongoDB(ctx, c)
-
-	// Setup Logined User Management
-	Sessions := session_manager.NewSessionsManager(ctx, c.Server.JWTSecretKey)
-
-	// Setup Websocket Management
-	WSManager := websocket.NewManager(ctx)
-
-	// Inject global variables
-	global.Logger = l
-	global.Validator = v
-	global.MongoClient = MongoClient
-	global.WSManager = WSManager
-	global.SessionManager = Sessions
-	global.JWTSecretKey = c.Server.JWTSecretKey
-	global.PasswordRecoveryMap = pr
+	// Inject globals
+	globals.Logger = log
+	globals.Validator = val
+	globals.MongoClient = ConnectMongoDB(ctx, c)
+	globals.JWTSecretKey = c.Server.JWTSecretKey
+	globals.SessionManager = session_manager.NewSessionsManager(ctx, c.Server.JWTSecretKey)
+	globals.PasswordRecoveryMap = password_recovery.NewRecoveryRetentionMap(ctx)
 
 	// Initialize router
 	r := router.New()
@@ -169,7 +140,7 @@ func main() {
 			log.Error().Err(err).Msg("Server shutdown failure")
 		}
 
-		DisconnectMongoDB(MongoClient)
+		DisconnectMongoDB(globals.MongoClient)
 
 		close(closed)
 	}()

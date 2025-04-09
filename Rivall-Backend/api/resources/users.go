@@ -1,8 +1,10 @@
-package users
+package resources
 
 import (
 	"encoding/json"
 	"net/http"
+
+	db "Rivall-Backend/db"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
@@ -17,7 +19,7 @@ func PostUserContact(w http.ResponseWriter, r *http.Request) {
 	userID := vars["user_id"]
 
 	// Check the user exists
-	if ReadByUserId(userID).ID == bson.NilObjectID {
+	if db.ReadByUserId(userID).ID == bson.NilObjectID {
 		log.Error().Msg("User does not exist")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("User does not exist."))
@@ -36,7 +38,7 @@ func PostUserContact(w http.ResponseWriter, r *http.Request) {
 	contactID := vars["contact_id"]
 
 	// check the contact exists
-	if ReadByUserId(contactID).ID == bson.NilObjectID {
+	if db.ReadByUserId(contactID).ID == bson.NilObjectID {
 		log.Error().Msg("Contact does not exist")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Contact does not exist."))
@@ -44,7 +46,7 @@ func PostUserContact(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// check if user already has this contact
-	contacts := ReadByUserId(userID).ContactIDs
+	contacts := db.ReadByUserId(userID).ContactIDs
 	for _, contact := range contacts {
 		id, err := bson.ObjectIDFromHex(contactID)
 		if err != nil {
@@ -62,7 +64,7 @@ func PostUserContact(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create user contact with new contact
-	err = CreateUserContact(userID, contactID)
+	err = db.CreateUserContact(userID, contactID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to set user contact")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -90,7 +92,7 @@ func DeleteUserContact(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// delete user contact
-	err = RemoveUserContact(userID, vars["contact_id"])
+	err = db.RemoveUserContact(userID, vars["contact_id"])
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to delete user contact")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -110,7 +112,7 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("User ID: %s", userID)
 
 	// check user exists
-	user := ReadByUserId(userID)
+	user := db.ReadByUserId(userID)
 	if user.ID == bson.NilObjectID {
 		log.Error().Msg("User does not exist")
 		w.WriteHeader(http.StatusBadRequest)

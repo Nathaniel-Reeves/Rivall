@@ -1,15 +1,21 @@
-package messagegroup
+package resources
 
 import (
 	"encoding/json"
 	"net/http"
 
-	users "Rivall-Backend/api/resources/users"
+	db "Rivall-Backend/db"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
+
+type NewGroupReq struct {
+	GroupName      string   `json:"group_name"`
+	RequestMessage string   `json:"message"`
+	UserIDs        []string `json:"user_ids"`
+}
 
 func WriteNewMessageGroup(w http.ResponseWriter, r *http.Request) {
 	// Create new message group in database
@@ -18,7 +24,7 @@ func WriteNewMessageGroup(w http.ResponseWriter, r *http.Request) {
 	// Check the admin user is a valid logged in user
 	vars := mux.Vars(r)
 	adminUserID := vars["user_id"]
-	if users.ReadByUserId(adminUserID).ID == bson.NilObjectID {
+	if db.ReadByUserId(adminUserID).ID == bson.NilObjectID {
 		log.Error().Msg("Admin user does not exist")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Admin user does not exist."))
@@ -35,7 +41,7 @@ func WriteNewMessageGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, userID := range body["user_ids"] {
-		if users.ReadByUserId(userID).ID == bson.NilObjectID {
+		if db.ReadByUserId(userID).ID == bson.NilObjectID {
 			log.Error().Msg("User does not exist")
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("User does not exist."))
@@ -60,7 +66,7 @@ func WriteNewMessageGroup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create new message group in database, Only add the Admin user to the group
-	insertID, err2 := CreateMessageGroup(body["group_name"][0], adminUserID)
+	insertID, err2 := db.CreateGroup(body["group_name"][0], adminUserID)
 	if err2 != nil { // check insertID is type string
 		log.Error().Err(err).Msg("Failed to create new message group")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -71,7 +77,7 @@ func WriteNewMessageGroup(w http.ResponseWriter, r *http.Request) {
 	// Send Group Request to all users requested to be added to the group
 	failedRequests := make([]map[string]interface{}, 0)
 	for _, userID := range body["user_ids"] {
-		err3 := users.CreateUserMessageGroupRequest(adminUserID, userID, insertID, body["message"][0])
+		err3 := db.CreateUserMessageRequest(adminUserID, userID, insertID, body["message"][0])
 		if err3 != nil {
 			log.Error().Err(err).Msg("Failed to send group request")
 			r := map[string]interface{}{
@@ -115,7 +121,7 @@ func AcceptGroupRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	// Check the group is a valid group
 	groupID := body["group_id"][0]
-	groupObj := ReadByGroupId(groupID)
+	groupObj := db.ReadByGroupId(groupID)
 	if groupObj.ID == bson.NilObjectID {
 		log.Error().Msg("Group does not exist")
 		w.WriteHeader(http.StatusBadRequest)
@@ -123,7 +129,7 @@ func AcceptGroupRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check the user is a valid user
-	if users.ReadByUserId(body["user_id"][0]).ID == bson.NilObjectID {
+	if db.ReadByUserId(body["user_id"][0]).ID == bson.NilObjectID {
 		log.Error().Msg("User does not exist")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("User does not exist."))
@@ -131,7 +137,7 @@ func AcceptGroupRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Add the group to the user's groups and update the message request status
-	err2 := users.AcceptUserMessageGroupRequest(body["user_id"][0], groupID)
+	err2 := db.AcceptUserMessageGroupRequest(body["user_id"][0], groupID)
 	if err2 != nil {
 		log.Error().Err(err2).Msg("Failed to accept group request")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -140,7 +146,7 @@ func AcceptGroupRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Add the user to the group
-	err3 := AddUserToMessageGroup(body["user_id"][0], groupID)
+	err3 := db.AddUserToGroup(body["user_id"][0], groupID)
 	if err3 != nil {
 		log.Error().Err(err3).Msg("Failed to add user to group")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -167,7 +173,7 @@ func RejectGroupRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check the user is a valid user
-	if users.ReadByUserId(body["user_id"][0]).ID == bson.NilObjectID {
+	if db.ReadByUserId(body["user_id"][0]).ID == bson.NilObjectID {
 		log.Error().Msg("User does not exist")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("User does not exist."))
@@ -175,7 +181,7 @@ func RejectGroupRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update the group request status
-	err2 := users.RejectUserMessageGroupRequest(body["user_id"][0], body["group_id"][0])
+	err2 := db.RejectUserMessageGroupRequest(body["user_id"][0], body["group_id"][0])
 	if err2 != nil {
 		log.Error().Err(err2).Msg("Failed to reject group request")
 		w.WriteHeader(http.StatusInternalServerError)
