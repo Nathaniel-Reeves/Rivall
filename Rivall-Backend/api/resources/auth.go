@@ -98,7 +98,6 @@ type LoginUserRes struct {
 func LoginUser(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("GET user by username")
 
-	// get user data
 	userLogin := db.User{}
 	err := json.NewDecoder(r.Body).Decode(&userLogin)
 	userLogin.Email = strings.ToLower(userLogin.Email)
@@ -109,7 +108,6 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// get user from db
 	user := db.ReadByUserEmail(userLogin.Email)
 	if user.ID == bson.NilObjectID {
 		log.Warn().Msg("User not found")
@@ -118,7 +116,6 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check password
 	if !db.ComparePasswords(user.Password, userLogin.Password) {
 		log.Warn().Msg("Invalid password")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -126,16 +123,10 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create Access Session
 	accessSession := globals.SessionManager.NewAccessSession(user.ID.Hex())
-
-	// Create Refresh Session
 	refreshSession := globals.SessionManager.NewRefreshSession(user.ID.Hex())
-
-	// Create OTP for websocket
 	user.OTP = websocket.WSManager.CreateOTP()
 
-	// Clean Response Data
 	su := UserRes{
 		ID:          user.ID.Hex(),
 		FirstName:   user.FirstName,
@@ -443,8 +434,16 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get Token from Header
+	// Get Tokens from Header
 	tokenString := r.Header.Get("Authorization")
+	if tokenString == "" {
+		log.Error().Msg("Token not found in header")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Token not found in header"))
+		return
+	}
+
+	RefreshtokenString := r.Header.Get("Refresh-Auth")
 	if tokenString == "" {
 		log.Error().Msg("Token not found in header")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -454,6 +453,7 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 
 	// Delete Session
 	globals.SessionManager.DeleteSession(tokenString)
+	globals.SessionManager.DeleteSession(RefreshtokenString)
 
 	// remove token from header, the token will eventually expire
 	w.Header().Set("Authorization", "")

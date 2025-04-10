@@ -52,7 +52,7 @@ func CreateGroupHandler(event Event, c *Client) error {
 
 	// Add a Request to all users requested to be added to the group
 	for _, userID := range chatevent.UserIDs {
-		if err := db.CreateUserMessageRequest(AdminUserID, userID, groupID, chatevent.Message); err != nil {
+		if err := db.CreateGroupRequest(AdminUserID, userID, groupID, chatevent.Message); err != nil {
 			log.Error().Err(err).Msg("failed to send group request")
 			return err
 		}
@@ -77,14 +77,15 @@ func CreateGroupHandler(event Event, c *Client) error {
 	outgoingEvent.Type = EventNewMessage
 	outgoingEvent.GroupID = groupID
 	outgoingEvent.UserID = AdminUserID
+	outgoingEvent.DirectMessageID = event.DirectMessageID
 
 	// Broadcast to all other Clients in the Group
-	for client := range c.Manager().Clients() {
-		// Only send to clients inside the same Group
-		// if client.Chatroom() == c.Chatroom() {
-		// 	client.Egress <- outgoingEvent
-		// }
-		client.Egress <- outgoingEvent
-	}
+	// for client := range c.Manager().Clients() {
+	// 	// Only send to clients inside the same Group
+	// 	// if client.Chatroom() == c.Chatroom() {
+	// 	// 	client.Egress <- outgoingEvent
+	// 	// }
+	// 	client.Egress <- outgoingEvent
+	// }
 	return nil
 }

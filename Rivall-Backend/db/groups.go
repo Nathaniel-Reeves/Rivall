@@ -1,4 +1,4 @@
-package models
+package db
 
 import (
 	"Rivall-Backend/globals"
@@ -19,15 +19,6 @@ type Group struct {
 	CreatedAt    bson.Timestamp  `json:"created_at"    bson:"created_at"`
 }
 
-type Message struct {
-	ID          bson.ObjectID   `json:"_id"           bson:"_id"`
-	User        bson.ObjectID   `json:"user"          bson:"user"`
-	MessageData string          `json:"message_data"  bson:"message_data"`
-	Timestamp   string          `json:"timestamp"     bson:"timestamp"`
-	MessageType string          `json:"message_type"  bson:"message_type"`
-	SeenBy      []bson.ObjectID `json:"seen_by"     bson:"seen_by"`
-}
-
 func ReadByGroupId(groupID string) Group {
 	// Read a message group by its ID
 	var group Group
@@ -38,7 +29,7 @@ func ReadByGroupId(groupID string) Group {
 		return group
 	}
 
-	collection := globals.MongoClient.Database(database).Collection(collectionName)
+	collection := globals.MongoClient.Database(Database).Collection("Groups")
 
 	filter := bson.D{{"_id", id}}
 	err = collection.FindOne(context.Background(), filter).Decode(&group)
@@ -54,7 +45,7 @@ func CreateGroup(groupName string, adminUserID string) (string, error) {
 	// Create new message group in database
 	// Only add the Admin user to the group
 
-	convertedAdminUserID, err := bson.ObjectIDFromHex(adminUserID)
+	bsonAdminUserID, err := bson.ObjectIDFromHex(adminUserID)
 	if err != nil {
 		globals.Logger.Error().Err(err).Msg("Failed to convert admin user ID")
 		return "", err
@@ -63,7 +54,7 @@ func CreateGroup(groupName string, adminUserID string) (string, error) {
 	GroupID := bson.NewObjectID()
 	group := Group{
 		ID:           GroupID,
-		AdminID:      convertedAdminUserID,
+		AdminID:      bsonAdminUserID,
 		GroupName:    groupName,
 		GroupMembers: []bson.ObjectID{},
 		LastMessage:  Message{},
@@ -71,7 +62,7 @@ func CreateGroup(groupName string, adminUserID string) (string, error) {
 		CreatedAt:    bson.Timestamp{},
 	}
 
-	collection := globals.MongoClient.Database(database).Collection(collectionName)
+	collection := globals.MongoClient.Database(Database).Collection("Groups")
 
 	result, err := collection.InsertOne(context.Background(), group)
 	if err != nil {
@@ -91,15 +82,15 @@ func CreateGroup(groupName string, adminUserID string) (string, error) {
 func AddUserToGroup(groupID string, userID string) error {
 	// Add a user to a message group
 
-	id, err := bson.ObjectIDFromHex(groupID)
+	bsonGroupID, err := bson.ObjectIDFromHex(groupID)
 	if err != nil {
 		globals.Logger.Error().Err(err).Msg("Failed to convert group ID")
 		return err
 	}
 
-	collection := globals.MongoClient.Database(database).Collection(collectionName)
+	collection := globals.MongoClient.Database(Database).Collection("Groups")
 
-	filter := bson.D{{"_id", id}}
+	filter := bson.D{{"_id", bsonGroupID}}
 	update := bson.D{{"$push", bson.D{{"user_ids", userID}}}}
 
 	_, err = collection.UpdateOne(context.Background(), filter, update)

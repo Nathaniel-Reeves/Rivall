@@ -64,43 +64,13 @@ func PostUserContact(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create user contact with new contact
-	err = db.CreateUserContact(userID, contactID)
+	err = db.CreateContact(userID, contactID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to set user contact")
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed to set user contact."))
 		return
 	}
-}
-
-func DeleteUserContact(w http.ResponseWriter, r *http.Request) {
-	log.Info().Msg("DELETE user contact")
-
-	// get user id from url parameters
-	vars := mux.Vars(r)
-	userID := vars["user_id"]
-	log.Debug().Msgf("User ID: %s", userID)
-
-	// get contact id from content body
-	vars = make(map[string]string)
-	err := json.NewDecoder(r.Body).Decode(&vars)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to decode contact ID, invalid JSON request")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Failed to decode contact ID, invalid JSON request."))
-		return
-	}
-
-	// delete user contact
-	err = db.RemoveUserContact(userID, vars["contact_id"])
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to delete user contact")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to delete user contact."))
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
 }
 
 func GetUser(w http.ResponseWriter, r *http.Request) {

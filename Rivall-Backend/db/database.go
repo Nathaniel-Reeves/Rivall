@@ -1,3 +1,3 @@
-package models
+package db
 
-const database string = "Rivall-DB"
+const Database string = "Rivall-DB"

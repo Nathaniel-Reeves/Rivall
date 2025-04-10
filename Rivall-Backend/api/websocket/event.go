@@ -10,10 +10,10 @@ type Event struct {
 	// Type is the message type sent
 	Type string `json:"type"`
 	// Payload is the data Based on the Type
-	Payload json.RawMessage `json:"payload"`
-
-	GroupID string `json:"group_id"`
-	UserID  string `json:"user_id"`
+	Payload         json.RawMessage `json:"payload"`
+	GroupID         string          `json:"group_id"`
+	DirectMessageID string          `json:"direct_message_id"`
+	UserID          string          `json:"user_id"`
 }
 
 // EventHandler is a function signature that is used to affect messages on the socket and triggered

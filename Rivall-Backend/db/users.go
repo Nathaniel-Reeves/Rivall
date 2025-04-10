@@ -1,31 +1,14 @@
-package models
+package db
 
 import (
 	"Rivall-Backend/globals"
 	"context"
 	"errors"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"golang.org/x/crypto/bcrypt"
 )
-
-/*
-User struct represents a user in the system
-{
-	"_id": "5f8a0b9b0f1b5b1b3c1b1b1b",
-	"firstName": "name",
-	"lastName": "lastname",
-	"email": "email@email.com",
-	"password": "password",
-	"image": "base64 encoded image",
-	"groups": [<group>],
-	"contacts": [<user>]
-}
-*/
-
-const CollectionName string = "Users"
 
 type User struct {
 	ID           bson.ObjectID   `json:"_id"           bson:"_id"`
@@ -38,7 +21,7 @@ type User struct {
 	ContactIDs   []bson.ObjectID `bson:"contact_ids"`
 	OTP          string          `json:"otp"`
 	RefreshToken string          `json:"refresh_token" bson:"refresh_token"`
-	// Contacts are not stored on the database, they are fetched from the contact_ids
+	// Contacts are not stored on the Database, they are fetched from the contact_ids
 	Contacts      []Contact      `json:"contacts"      bson:"omitempty"`
 	GroupRequests []GroupRequest `json:"group_requests" bson:"group_requests"`
 }
@@ -46,37 +29,11 @@ type User struct {
 type GroupRequest struct {
 	ID            bson.ObjectID  `json:"_id"        bson:"_id"`
 	SendUserID    bson.ObjectID  `json:"send_user_id" bson:"send_user_id"`
-	RecieveUserID bson.ObjectID  `json:"recieve_user_id" bson:"recieve_user_id"`
+	RecieveUserID bson.ObjectID  `json:"receive_user_id" bson:"receive_user_id"`
 	GroupID       bson.ObjectID  `json:"group_id"  bson:"group_id"`
 	Message       string         `json:"message" bson:"message"`
 	Timestamp     bson.Timestamp `json:"timestamp" bson:"timestamp"`
 	Status        int8           `json:"status" bson:"status"`
-}
-
-// Status Codes
-// 0 - Pending
-// 1 - Accepted
-// 2 - Rejected
-
-type Contact struct {
-	ID          bson.ObjectID `json:"_id"          bson:"_id"`
-	FirstName   string        `json:"first_name"   bson:"first_name"`
-	LastName    string        `json:"last_name"    bson:"last_name"`
-	Email       string        `json:"email"        bson:"email"`
-	AvatarImage string        `json:"avatar_image" bson:"avatar_image"`
-}
-
-func enumRequestStatus(status int8) string {
-	switch status {
-	case 0:
-		return "Pending"
-	case 1:
-		return "Accepted"
-	case 2:
-		return "Rejected"
-	default:
-		return "Unknown"
-	}
 }
 
 func ReadByUserId(id string) User {
@@ -86,7 +43,7 @@ func ReadByUserId(id string) User {
 	i, _ := bson.ObjectIDFromHex(id)
 	filter := bson.D{{"_id", i}}
 
-	collection := globals.MongoClient.Database(database).Collection(CollectionName)
+	collection := globals.MongoClient.Database(Database).Collection("Users")
 	err := collection.FindOne(context.TODO(), filter).Decode(&result)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to read user")
@@ -123,7 +80,7 @@ func ReadGroupRequestById(id string) GroupRequest {
 	i, _ := bson.ObjectIDFromHex(id)
 	filter := bson.D{{"_id", i}}
 
-	collection := globals.MongoClient.Database(database).Collection(CollectionName)
+	collection := globals.MongoClient.Database(Database).Collection("Users")
 	err := collection.FindOne(context.TODO(), filter).Decode(&result)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to read message group request")
@@ -139,7 +96,7 @@ func ReadContactById(id string) Contact {
 	i, _ := bson.ObjectIDFromHex(id)
 	filter := bson.D{{"_id", i}}
 
-	collection := globals.MongoClient.Database(database).Collection(CollectionName)
+	collection := globals.MongoClient.Database(Database).Collection("Users")
 	err := collection.FindOne(context.TODO(), filter).Decode(&result)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to read contact")
@@ -153,41 +110,12 @@ func ReadByUserEmail(email string) User {
 	log.Debug().Msgf("Reading user with email '%v'", email)
 	filter := bson.D{{"email", email}}
 
-	collection := globals.MongoClient.Database(database).Collection(CollectionName)
+	collection := globals.MongoClient.Database(Database).Collection("Users")
 	err := collection.FindOne(context.TODO(), filter).Decode(&result)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to read user")
 	}
 	return result
-}
-
-func CreateUser(user User) error {
-	collection := globals.MongoClient.Database(database).Collection(CollectionName)
-
-	if log.Debug().Enabled() {
-		log.Debug().Msgf("Creating user...")
-		spew.Dump(user)
-	}
-
-	// hash password
-	user = HashUserPassword(user)
-	user.ID = bson.NewObjectID()
-	user.RefreshToken = ""
-
-	// set default empty arrays
-	user.ContactIDs = []bson.ObjectID{}
-	user.GroupIDs = []bson.ObjectID{}
-	user.Contacts = []Contact{}
-	user.GroupRequests = []GroupRequest{}
-
-	// remove contacts from user object
-
-	inserted, err := collection.InsertOne(context.TODO(), user)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to insert user")
-	}
-	log.Info().Msgf("Inserted user with ID %v", inserted.InsertedID)
-	return err
 }
 
 func HashUserPassword(user User) User {
@@ -222,18 +150,45 @@ func ComparePasswords(hashedPwd string, plainPwd string) bool {
 	return true
 }
 
+func CreateUser(user User) error {
+	collection := globals.MongoClient.Database(Database).Collection("Users")
+
+	// hash password
+	user = HashUserPassword(user)
+	user.ID = bson.NewObjectID()
+	user.RefreshToken = ""
+
+	// set default empty arrays
+	user.ContactIDs = []bson.ObjectID{}
+	user.GroupIDs = []bson.ObjectID{}
+	user.Contacts = []Contact{}
+	user.GroupRequests = []GroupRequest{}
+
+	// remove contacts from user object
+
+	inserted, err := collection.InsertOne(context.TODO(), user)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to insert user")
+	}
+	log.Info().Msgf("Inserted user with ID %v", inserted.InsertedID)
+	return err
+}
+
 func UpdateUserPassword(id string, password string) error {
-	collection := globals.MongoClient.Database(database).Collection(CollectionName)
+	collection := globals.MongoClient.Database(Database).Collection("Users")
 
 	// hash password
 	user := User{Password: password}
 	user = HashUserPassword(user)
 
-	i, _ := bson.ObjectIDFromHex(id)
+	i, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to convert user ID")
+	}
 	filter := bson.D{{"_id", i}}
 	update := bson.D{{"$set", bson.D{{"password", user.Password}}}}
 
-	_, err := collection.UpdateOne(context.TODO(), filter, update)
+	_, err = collection.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to update user")
 	}
@@ -241,7 +196,7 @@ func UpdateUserPassword(id string, password string) error {
 }
 
 func DeleteUser(id string) error {
-	collection := globals.MongoClient.Database(database).Collection(CollectionName)
+	collection := globals.MongoClient.Database(Database).Collection("Users")
 
 	i, _ := bson.ObjectIDFromHex(id)
 	filter := bson.D{{"_id", i}}
@@ -253,28 +208,26 @@ func DeleteUser(id string) error {
 	return err
 }
 
-func CreateUserContact(userID string, contactID string) error {
-	collection := globals.MongoClient.Database(database).Collection(CollectionName)
-
-	// TODO: check if contact already exists, dont add if it does
-	i, _ := bson.ObjectIDFromHex(userID)
-	filter := bson.D{{"_id", i}}
-	update := bson.D{{"$push", bson.D{{"contact_ids", contactID}}}}
-
-	_, err := collection.UpdateOne(context.TODO(), filter, update)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to add user contact")
+func enumRequestStatus(status int8) string {
+	switch status {
+	case 0:
+		return "Pending"
+	case 1:
+		return "Accepted"
+	case 2:
+		return "Rejected"
+	default:
+		return "Unknown"
 	}
-	return err
 }
 
-func CreateUserMessageRequest(
+func CreateGroupRequest(
 	senderUserID string,
-	recieverUserID string,
+	receiverUserID string,
 	groupID string,
 	message string,
 ) error {
-	collection := globals.MongoClient.Database(database).Collection(CollectionName)
+	collection := globals.MongoClient.Database(Database).Collection("Users")
 
 	i, err := bson.ObjectIDFromHex(senderUserID)
 	if err != nil {
@@ -288,9 +241,9 @@ func CreateUserMessageRequest(
 		return err
 	}
 
-	k, err := bson.ObjectIDFromHex(recieverUserID)
+	k, err := bson.ObjectIDFromHex(receiverUserID)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to convert reciever user ID")
+		log.Error().Err(err).Msg("Failed to convert receiver user ID")
 		return err
 	}
 
@@ -318,18 +271,18 @@ func CreateUserMessageRequest(
 		return errors.New("Failed to create new message group request")
 	}
 
-	log.Info().Msgf("Inserted message group request for user: %v", recieverUserID)
+	log.Info().Msgf("Inserted message group request for user: %v", receiverUserID)
 	return err
 }
 
-func AcceptUserGroupRequest(userID string, groupID string) error {
-	collection := globals.MongoClient.Database(database).Collection(CollectionName)
+func AcceptGroupRequest(userID string, groupID string) error {
+	collection := globals.MongoClient.Database(Database).Collection("Users")
 
 	i, _ := bson.ObjectIDFromHex(groupID)
 	j, _ := bson.ObjectIDFromHex(userID)
 
 	// Update Request Status
-	filter := bson.D{{"group_id", i}, {"recieve_user_id", j}}
+	filter := bson.D{{"group_id", i}, {"receive_user_id", j}}
 	update := bson.D{{"$set", bson.D{{"status", 1}}}}
 
 	_, err := collection.UpdateOne(context.TODO(), filter, update)
@@ -338,25 +291,22 @@ func AcceptUserGroupRequest(userID string, groupID string) error {
 	}
 
 	// Add user to group
-	filter = bson.D{{"_id", i}}
-	update = bson.D{{"$push", bson.D{{"group_ids", i}}}}
-
-	_, err = collection.UpdateOne(context.TODO(), filter, update)
+	err = AddUserToGroup(groupID, userID)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to add user to message group")
+		log.Error().Err(err).Msg("Failed to add user to group")
 	}
 
 	return err
 }
 
-func RejectUserGroupRequest(userID string, groupID string) error {
-	collection := globals.MongoClient.Database(database).Collection(CollectionName)
+func RejectGroupRequest(userID string, groupID string) error {
+	collection := globals.MongoClient.Database(Database).Collection("Users")
 
 	i, _ := bson.ObjectIDFromHex(groupID)
 	j, _ := bson.ObjectIDFromHex(userID)
 
 	// Update Request Status
-	filter := bson.D{{"group_id", i}, {"recieve_user_id", j}}
+	filter := bson.D{{"group_id", i}, {"receive_user_id", j}}
 	update := bson.D{{"$set", bson.D{{"status", 2}}}}
 
 	_, err := collection.UpdateOne(context.TODO(), filter, update)
@@ -367,25 +317,11 @@ func RejectUserGroupRequest(userID string, groupID string) error {
 	return err
 }
 
-func RemoveUserContact(userID string, contactID string) error {
-	collection := globals.MongoClient.Database(database).Collection(CollectionName)
-
-	i, _ := bson.ObjectIDFromHex(userID)
-	filter := bson.D{{"_id", i}}
-	update := bson.D{{"$pull", bson.D{{"contact_ids", contactID}}}}
-
-	_, err := collection.UpdateOne(context.TODO(), filter, update)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to delete user contact")
-	}
-	return err
-}
-
 func UserExists(id string) bool {
 	i, _ := bson.ObjectIDFromHex(id)
 	filter := bson.D{{"_id", i}}
 
-	collection := globals.MongoClient.Database(database).Collection(CollectionName)
+	collection := globals.MongoClient.Database(Database).Collection("Users")
 	count, err := collection.CountDocuments(context.TODO(), filter)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to check if user exists")
@@ -394,7 +330,7 @@ func UserExists(id string) bool {
 }
 
 func UpdateUserRefreshToken(user User) error {
-	collection := globals.MongoClient.Database(database).Collection(CollectionName)
+	collection := globals.MongoClient.Database(Database).Collection("Users")
 
 	i, _ := bson.ObjectIDFromHex(user.ID.Hex())
 	filter := bson.D{{"_id", i}}

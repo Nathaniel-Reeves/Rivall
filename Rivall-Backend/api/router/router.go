@@ -34,7 +34,6 @@ func New() *mux.Router {
 	privateRouter.HandleFunc("/auth/{user_id}/logout", resources.LogoutUser).Methods(http.MethodDelete)
 	privateRouter.HandleFunc("/users/{user_id}", resources.GetUser).Methods(http.MethodGet)
 	privateRouter.HandleFunc("/users/{user_id}/contacts", resources.PostUserContact).Methods(http.MethodPost)
-	privateRouter.HandleFunc("/users/{user_id}/contacts", resources.DeleteUserContact).Methods(http.MethodDelete)
 	privateRouter.HandleFunc("/groups", resources.WriteNewMessageGroup).Methods(http.MethodPost)
 	privateRouter.HandleFunc("/groups/{group_id}/user-request", resources.AcceptGroupRequest).Methods(http.MethodPut)
 	privateRouter.HandleFunc("/groups/{group_id}/user-request", resources.RejectGroupRequest).Methods(http.MethodDelete)

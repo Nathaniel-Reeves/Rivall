@@ -47,7 +47,7 @@ func checkOrigin(r *http.Request) bool {
 
 // Manager is used to hold references to all Clients Registered, and Broadcasting etc
 type Manager struct {
-	clients ClientList
+	clients ClientMap
 
 	// Using a syncMutex here to be able to lock state before editing clients
 	// Could also use Channels to block
@@ -58,15 +58,14 @@ type Manager struct {
 	otps RetentionMap
 }
 
-func (m *Manager) Clients() map[*Client]bool {
+func (m *Manager) Clients() ClientMap {
 	return m.clients
 }
 
-// NewManager is used to initalize all the values inside the manager
 func NewManager(ctx context.Context) *Manager {
 	log.Info().Msg("Creating new Websocket Manager")
 	m := &Manager{
-		clients:  make(ClientList),
+		clients:  make(ClientMap),
 		handlers: make(map[string]EventHandler),
 		// Create a new retentionMap that removes Otps older than 5 seconds
 		otps: NewRetentionMap(ctx, 5*time.Second),
@@ -76,17 +75,13 @@ func NewManager(ctx context.Context) *Manager {
 	return m
 }
 
-// setupEventHandlers configures and adds all handlers
 func (m *Manager) setupEventHandlers() {
 	m.handlers[EventSendMessage] = SendMessageHandler
 	m.handlers[EventCreateGroup] = CreateGroupHandler
 }
 
-// routeEvent is used to make sure the correct event goes into the correct handler
 func (m *Manager) routeEvent(event Event, c *Client) error {
-	// Check if Handler is present in Map
 	if handler, ok := m.handlers[event.Type]; ok {
-		// Execute the handler and return any err
 		if err := handler(event, c); err != nil {
 			return err
 		}
@@ -96,44 +91,33 @@ func (m *Manager) routeEvent(event Event, c *Client) error {
 	}
 }
 
-// loginHandler is used to verify an user authentication and return a one time password
 func (m *Manager) CreateOTP() string {
-
-	// add a new OTP
 	otp := m.otps.NewOTP()
-
 	return otp.Key
 }
 
-// serveWS is a HTTP Handler that the has the Manager that allows connections
 func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request) {
 
 	log.Debug().Msg("Serving Websocket Connection")
 
-	// Grab the User ID
 	vars := mux.Vars(r)
 	userID := vars["user_id"]
 	if userID == "" {
-		// Tell the user its not authorized
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	// Check user ID is valid
 	if userID == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	// Grab the OTP in the Get param
 	otp := r.URL.Query().Get("otp")
 	if otp == "" {
-		// Tell the user its not authorized
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	// Verify OTP is existing
 	log.Debug().Msgf("Verifying OTP: %s", otp)
 	if !m.otps.VerifyOTP(otp) {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -141,7 +125,6 @@ func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Begin by upgrading the HTTP request
 	log.Info().Msg("Upgrading to Websocket Connection")
 	conn, err := websocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -149,9 +132,7 @@ func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create New Client
 	client := NewClient(conn, m, userID)
-	// Add the newly created client to the manager
 	m.addClient(client)
 	log.Debug().Msg("Client Added to Manager")
 
@@ -159,30 +140,24 @@ func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request) {
 	go client.writeMessages()
 }
 
-// addClient will add clients to our clientList
 func (m *Manager) addClient(client *Client) {
-	// Lock so we can manipulate
 	m.Lock()
 	defer m.Unlock()
 
-	// Add Client
-	m.clients[client] = true
+	m.clients[client.userID] = client
 
 	log.Debug().Msg("Client Added")
 }
 
-// removeClient will remove the client and clean up
 func (m *Manager) removeClient(client *Client) {
 	m.Lock()
 	defer m.Unlock()
-
-	// Check if Client exists, then delete it
-	if _, ok := m.clients[client]; ok {
-		// close connection
+	if _, ok := m.clients[client.userID]; ok {
 		client.connection.Close()
-		// remove
-		delete(m.clients, client)
-		log.Debug().Msg("Client removed")
+		delete(m.clients, client.userID)
+		log.Debug().Msg("Client Removed")
+	} else {
+		log.Warn().Msg("Client not found")
 	}
 }
 
@@ -191,18 +166,13 @@ func (m *Manager) RemoveClientByUserID(userID string) {
 	m.Lock()
 	defer m.Unlock()
 
-	for client := range m.clients {
-		if client.userID == userID {
-			// close connection
-			client.connection.Close()
-			// remove
-			delete(m.clients, client)
-			log.Debug().Msg("Client removed")
-			return
-		}
+	if client, ok := m.clients[userID]; ok {
+		client.connection.Close()
+		delete(m.clients, userID)
+		log.Debug().Msg("Client Removed")
+	} else {
+		log.Warn().Msg("Client not found")
 	}
-
-	log.Warn().Msg("Client not found")
 }
 
 var WSManager = NewManager(context.Background())

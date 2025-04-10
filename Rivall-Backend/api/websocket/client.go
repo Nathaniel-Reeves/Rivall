@@ -8,23 +8,15 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// ClientList is a map used to help manage a map of clients
 type ClientList map[*Client]bool
+type ClientMap map[string]*Client
 
-// Client is a websocket client, basically a frontend visitor
 type Client struct {
-	// the websocket connection
 	connection *websocket.Conn
-
-	// manager is the manager used to manage the client
-	manager *Manager
-	// egress is used to avoid concurrent writes on the WebSocket
-	Egress chan Event
-
-	// chatroom is used to know what room user is in
-	chatroom string
-
-	userID string
+	manager    *Manager
+	Egress     chan Event
+	chatroom   string
+	userID     string
 }
 
 var (
@@ -36,7 +28,6 @@ var (
 	pingInterval = (pongWait * 9) / 10
 )
 
-// NewClient is used to initialize a new Client with all required values initialized
 func NewClient(conn *websocket.Conn, manager *Manager, userID string) *Client {
 	return &Client{
 		connection: conn,
@@ -54,39 +45,28 @@ func (c *Client) Send(message Event) {
 	c.Egress <- message
 }
 
-// readMessages will start the client to read messages and handle them
-// appropriatly.
-// This is suppose to be ran as a goroutine
 func (c *Client) readMessages() {
 	defer func() {
-		// Graceful Close the Connection once this
-		// function is done
+
 		c.manager.removeClient(c)
 	}()
 	// Set Max Size of Messages in Bytes
 	c.connection.SetReadLimit(512)
-	// Configure Wait time for Pong response, use Current time + pongWait
-	// This has to be done here to set the first initial timer.
 	if err := c.connection.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
 		log.Err(err).Msg("error setting read deadline")
 		return
 	}
-	// Configure how to handle Pong responses
 	c.connection.SetPongHandler(c.pongHandler)
 
 	// Loop Forever
 	for {
-		// ReadMessage is used to read the next message in queue
-		// in the connection
 		_, payload, err := c.connection.ReadMessage()
 
 		if err != nil {
-			// If Connection is closed, we will Recieve an error here
-			// We only want to log Strange errors, but simple Disconnection
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Err(err).Msg("error reading message")
 			}
-			break // Break the loop to close conn & Cleanup
+			break
 		}
 		// Marshal incoming data into a Event struct
 		var request Event
@@ -101,14 +81,10 @@ func (c *Client) readMessages() {
 	}
 }
 
-// pongHandler is used to handle PongMessages for the Client
 func (c *Client) pongHandler(pongMsg string) error {
-	// Current time + Pong Wait time
-	// log.Debug().Msg("pong")
 	return c.connection.SetReadDeadline(time.Now().Add(pongWait))
 }
 
-// writeMessages is a process that listens for new messages to output to the Client
 func (c *Client) writeMessages() {
 	// Create a ticker that triggers a ping at given interval
 	ticker := time.NewTicker(pingInterval)
@@ -135,7 +111,7 @@ func (c *Client) writeMessages() {
 			data, err := json.Marshal(message)
 			if err != nil {
 				log.Err(err).Msg("error marshaling message")
-				return // closes the connection, should we really
+				return
 			}
 			// Write a Regular text message to the connection
 			if err := c.connection.WriteMessage(websocket.TextMessage, data); err != nil {
