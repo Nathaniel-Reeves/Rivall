@@ -77,7 +77,7 @@ func WriteNewMessageGroup(w http.ResponseWriter, r *http.Request) {
 	// Send Group Request to all users requested to be added to the group
 	failedRequests := make([]map[string]interface{}, 0)
 	for _, userID := range body["user_ids"] {
-		err3 := db.CreateGroupRequest(adminUserID, userID, insertID, body["message"][0])
+		_, err3 := db.CreateGroupRequest(adminUserID, userID, insertID, body["group_name"][0], body["message"][0])
 		if err3 != nil {
 			log.Error().Err(err).Msg("Failed to send group request")
 			r := map[string]interface{}{

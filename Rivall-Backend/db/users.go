@@ -31,6 +31,7 @@ type GroupRequest struct {
 	SendUserID    bson.ObjectID  `json:"send_user_id" bson:"send_user_id"`
 	RecieveUserID bson.ObjectID  `json:"receive_user_id" bson:"receive_user_id"`
 	GroupID       bson.ObjectID  `json:"group_id"  bson:"group_id"`
+	GroupName     string         `json:"group_name" bson:"group_name"`
 	Message       string         `json:"message" bson:"message"`
 	Timestamp     bson.Timestamp `json:"timestamp" bson:"timestamp"`
 	Status        int8           `json:"status" bson:"status"`
@@ -225,33 +226,36 @@ func CreateGroupRequest(
 	senderUserID string,
 	receiverUserID string,
 	groupID string,
+	groupName string,
 	message string,
-) error {
+) (string, error) {
 	collection := globals.MongoClient.Database(Database).Collection("Users")
 
 	i, err := bson.ObjectIDFromHex(senderUserID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to convert sender user ID")
-		return err
+		return "", err
 	}
 
 	j, err := bson.ObjectIDFromHex(groupID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to convert group ID")
-		return err
+		return "", err
 	}
 
 	k, err := bson.ObjectIDFromHex(receiverUserID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to convert receiver user ID")
-		return err
+		return "", err
 	}
 
+	RequestID := bson.NewObjectID()
 	request := GroupRequest{
-		ID:            bson.NewObjectID(),
+		ID:            RequestID,
 		SendUserID:    i,
 		RecieveUserID: k,
 		GroupID:       j,
+		GroupName:     groupName,
 		Message:       message,
 		Timestamp:     bson.Timestamp{},
 		Status:        0,
@@ -264,15 +268,15 @@ func CreateGroupRequest(
 	)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create new message group request")
-		return err
+		return "", err
 	}
 	if updateResult.MatchedCount == 0 || updateResult.ModifiedCount == 0 {
 		log.Error().Msgf("Matched %d documents and modified %d documents", updateResult.MatchedCount, updateResult.ModifiedCount)
-		return errors.New("Failed to create new message group request")
+		return "", errors.New("Failed to create new message group request")
 	}
 
 	log.Info().Msgf("Inserted message group request for user: %v", receiverUserID)
-	return err
+	return RequestID.Hex(), err
 }
 
 func AcceptGroupRequest(userID string, groupID string) error {

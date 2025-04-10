@@ -53,6 +53,7 @@ func SendMessageHandler(event Event, c *Client) error {
 	}
 
 	var message = db.Message{
+		ID:          bson.NewObjectID(),
 		SenderID:    bsonFromID,
 		MessageData: chatevent.MessageData,
 		Timestamp:   chatevent.Timestamp,
@@ -88,8 +89,10 @@ func SendMessageHandler(event Event, c *Client) error {
 	outgoingEvent.UserID = event.UserID
 	outgoingEvent.DirectMessageID = event.DirectMessageID
 
-	// Broadcast to the other Client
+	// Broadcast to the other Client if user is online
+	if _, ok := c.Manager().Clients()[chatevent.ReceiverID]; !ok {
+		return nil
+	}
 	c.Manager().Clients()[chatevent.ReceiverID].Egress <- outgoingEvent
-
 	return nil
 }

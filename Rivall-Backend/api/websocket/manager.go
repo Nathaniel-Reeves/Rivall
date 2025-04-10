@@ -78,6 +78,9 @@ func NewManager(ctx context.Context) *Manager {
 func (m *Manager) setupEventHandlers() {
 	m.handlers[EventSendMessage] = SendMessageHandler
 	m.handlers[EventCreateGroup] = CreateGroupHandler
+	m.handlers[EventAcceptGroupRequest] = AcceptGroupRequestHandler
+	m.handlers[EventRejectGroupRequest] = RejectGroupRequestHandler
+	m.handlers[EventSendGroupMessage] = SendGroupMessageHandler
 }
 
 func (m *Manager) routeEvent(event Event, c *Client) error {

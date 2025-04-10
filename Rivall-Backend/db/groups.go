@@ -79,6 +79,26 @@ func CreateGroup(groupName string, adminUserID string) (string, error) {
 	return "", err
 }
 
+func GetGroupAdminID(groupID string) (string, error) {
+	// Get the admin ID of a group
+	collection := globals.MongoClient.Database(Database).Collection("Groups")
+
+	bsonGroupID, err := bson.ObjectIDFromHex(groupID)
+	if err != nil {
+		globals.Logger.Error().Err(err).Msg("Failed to convert group ID")
+		return "", err
+	}
+
+	var result Group
+	err = collection.FindOne(context.Background(), bson.M{"_id": bsonGroupID}).Decode(&result)
+	if err != nil {
+		globals.Logger.Error().Err(err).Msg("Failed to get group admin ID")
+		return "", err
+	}
+
+	return result.AdminID.Hex(), nil
+}
+
 func AddUserToGroup(groupID string, userID string) error {
 	// Add a user to a message group
 
@@ -100,4 +120,119 @@ func AddUserToGroup(groupID string, userID string) error {
 	}
 
 	return nil
+}
+
+func InsertGroupMessage(GroupID string, message Message) error {
+	// Insert a message into the direct messages group
+	collection := globals.MongoClient.Database(Database).Collection("Groups")
+
+	bsonGroupID, err := bson.ObjectIDFromHex(GroupID)
+	if err != nil {
+		globals.Logger.Error().Err(err).Msg("failed to convert direct message ID")
+	}
+
+	filter := bson.M{"_id": bsonGroupID}
+	update := bson.M{"$push": bson.M{"messages": message}, "$set": bson.M{"last_message": message}}
+
+	_, err = collection.UpdateOne(context.Background(), filter, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GroupExists(groupID string) bool {
+	// Check if a group exists in the database
+	collection := globals.MongoClient.Database(Database).Collection("Groups")
+
+	bsonGroupID, err := bson.ObjectIDFromHex(groupID)
+	if err != nil {
+		globals.Logger.Error().Err(err).Msg("failed to convert group ID")
+		return false
+	}
+
+	var result Group
+	err = collection.FindOne(context.Background(), bson.M{"_id": bsonGroupID}).Decode(&result)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+func UserInGroup(groupID string, userID string) bool {
+	// Check if a user is in a group
+	collection := globals.MongoClient.Database(Database).Collection("Groups")
+
+	bsonGroupID, err := bson.ObjectIDFromHex(groupID)
+	if err != nil {
+		globals.Logger.Error().Err(err).Msg("failed to convert group ID")
+		return false
+	}
+
+	var result Group
+	err = collection.FindOne(context.Background(), bson.M{"_id": bsonGroupID}).Decode(&result)
+	if err != nil {
+		return false
+	}
+
+	// Check if the user ID is in the group members
+	for _, member := range result.GroupMembers {
+		if member.Hex() == userID {
+			return true
+		}
+	}
+
+	return false
+}
+
+func UserWasRequestedToJoinGroup(groupID string, userID string) bool {
+	// Check if a user was requested to join a group
+	collection := globals.MongoClient.Database(Database).Collection("Groups")
+
+	bsonGroupID, err := bson.ObjectIDFromHex(groupID)
+	if err != nil {
+		globals.Logger.Error().Err(err).Msg("failed to convert group ID")
+		return false
+	}
+
+	var result Group
+	err = collection.FindOne(context.Background(), bson.M{"_id": bsonGroupID}).Decode(&result)
+	if err != nil {
+		return false
+	}
+
+	// Check if the user ID is in the group members
+	for _, member := range result.GroupMembers {
+		if member.Hex() == userID {
+			return true
+		}
+	}
+
+	return false
+}
+
+func GetGroupMembers(groupID string) ([]string, error) {
+	// Get all group members
+	collection := globals.MongoClient.Database(Database).Collection("Groups")
+
+	bsonGroupID, err := bson.ObjectIDFromHex(groupID)
+	if err != nil {
+		globals.Logger.Error().Err(err).Msg("failed to convert group ID")
+		return nil, err
+	}
+
+	var result Group
+	err = collection.FindOne(context.Background(), bson.M{"_id": bsonGroupID}).Decode(&result)
+	if err != nil {
+		return nil, err
+	}
+
+	members := make([]string, len(result.GroupMembers))
+	for i, member := range result.GroupMembers {
+		members[i] = member.Hex()
+	}
+
+	return members, nil
 }

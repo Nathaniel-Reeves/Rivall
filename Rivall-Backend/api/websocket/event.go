@@ -22,11 +22,18 @@ type EventHandler func(event Event, c *Client) error
 
 const (
 	// Action Events
-	EventSendMessage = "send_message"
-	EventCreateGroup = "create_group"
+	EventSendMessage        = "send_message"
+	EventCreateGroup        = "create_group"
+	EventAcceptGroupRequest = "accept_group_request"
+	EventRejectGroupRequest = "reject_group_request"
+	EventSendGroupMessage   = "send_group_message"
 
 	// Don't forget to add new action events to the setupEventHandlers func in manager.go
 
 	// Listen Events
-	EventNewMessage = "new_message"
+	EventNewMessage           = "new_message"
+	EventNewGroupRequest      = "new_group_request"
+	EventGroupRequestAccepted = "group_request_accepted"
+	EventGroupRequestRejected = "group_request_rejected"
+	EventNewGroupMessage      = "new_group_message"
 )

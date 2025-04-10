@@ -9,12 +9,14 @@ import (
 )
 
 type DirectMessages struct {
-	ID          bson.ObjectID `json:"_id" bson:"_id"`
-	UserAID     bson.ObjectID `json:"user_a_id" bson:"user_a_id"`
-	UserBID     bson.ObjectID `json:"user_b_id" bson:"user_b_id"`
-	CreatedAt   time.Time     `json:"created_at" bson:"created_at"`
-	Messages    []Message     `json:"messages" bson:"messages"`
-	LastMessage Message       `json:"last_message" bson:"last_message"`
+	ID                 bson.ObjectID `json:"_id" bson:"_id"`
+	UserAID            bson.ObjectID `json:"user_a_id" bson:"user_a_id"`
+	UserALastSeenIndex int           `json:"user_a_last_seen_index" bson:"user_a_last_seen_index"`
+	UserBID            bson.ObjectID `json:"user_b_id" bson:"user_b_id"`
+	UserBLastSeenIndex int           `json:"user_b_last_seen_index" bson:"user_b_last_seen_index"`
+	CreatedAt          time.Time     `json:"created_at" bson:"created_at"`
+	Messages           []Message     `json:"messages" bson:"messages"`
+	LastMessage        Message       `json:"last_message" bson:"last_message"`
 }
 
 func CreateDirectMessages(userAID string, userBID string) (string, error) {
@@ -35,11 +37,13 @@ func CreateDirectMessages(userAID string, userBID string) (string, error) {
 	}
 
 	directMessage := DirectMessages{
-		ID:        bson.NewObjectID(),
-		UserAID:   bsonUserAID,
-		UserBID:   bsonUserBID,
-		CreatedAt: time.Now(),
-		Messages:  []Message{},
+		ID:                 bson.NewObjectID(),
+		UserAID:            bsonUserAID,
+		UserALastSeenIndex: 0,
+		UserBID:            bsonUserBID,
+		UserBLastSeenIndex: 0,
+		CreatedAt:          time.Now(),
+		Messages:           []Message{},
 		LastMessage: Message{
 			ID:          bson.NewObjectID(),
 			SenderID:    bsonUserAID,
