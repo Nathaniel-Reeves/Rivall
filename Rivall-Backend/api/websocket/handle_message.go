@@ -47,18 +47,18 @@ func SendMessageHandler(event Event, c *Client) error {
 	}
 
 	// Save message to Group in Database
-	bsonFromID, err := bson.ObjectIDFromHex(event.UserID)
+	bsonUserID, err := bson.ObjectIDFromHex(event.UserID)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to convert direct message ID")
 	}
 
 	var message = db.Message{
 		ID:          bson.NewObjectID(),
-		SenderID:    bsonFromID,
+		UserID:      bsonUserID,
 		MessageData: chatevent.MessageData,
 		Timestamp:   chatevent.Timestamp,
 		MessageType: chatevent.MessageType,
-		SeenBy:      []bson.ObjectID{bsonFromID},
+		SeenBy:      []bson.ObjectID{bsonUserID},
 	}
 	if err := db.InsertMessage(event.DirectMessageID, message); err != nil {
 		log.Error().Err(err).Msg("failed to insert message")

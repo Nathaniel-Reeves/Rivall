@@ -1,4 +1,4 @@
-import { client } from './axios.config';
+import { client, HOST, PORT, VERSION } from './axios.config';
 
 export async function login(email: string, password: string) : Promise<any> {
   const endpoint = '/auth/login';

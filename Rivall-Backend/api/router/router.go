@@ -24,6 +24,7 @@ func New() *mux.Router {
 	publicRouter.HandleFunc("/auth/login", resources.LoginUser).Methods(http.MethodPost)
 	publicRouter.HandleFunc("/auth/recovery/send-code", resources.SendAccountRecoveryEmail).Methods(http.MethodPost)
 	publicRouter.HandleFunc("/auth/recovery/validate-code", resources.ValidateAccountRecoveryCode).Methods(http.MethodPost)
+	publicRouter.HandleFunc("/contacts/{user_id}", resources.GetContact).Methods(http.MethodGet)
 
 	privateRouter := r.PathPrefix("/api/v1").Subrouter()
 	privateRouter.Use(middleware.AuthMiddleware)
@@ -34,6 +35,8 @@ func New() *mux.Router {
 	privateRouter.HandleFunc("/auth/{user_id}/logout", resources.LogoutUser).Methods(http.MethodDelete)
 	privateRouter.HandleFunc("/users/{user_id}", resources.GetUser).Methods(http.MethodGet)
 	privateRouter.HandleFunc("/users/{user_id}/contacts", resources.PostUserContact).Methods(http.MethodPost)
+	privateRouter.HandleFunc("/users/{user_id}/contacts/{chat_id}/chat", resources.GetChat).Methods(http.MethodGet)
+	// privateRouter.HandleFunc("/contacts/{user_id}", resources.GetContact).Methods(http.MethodGet)
 
 	privateWSRouter := r.PathPrefix("/api/v1/ws").Subrouter()
 	privateWSRouter.HandleFunc("/connect/{user_id}", websocket.WSManager.ServeWS)

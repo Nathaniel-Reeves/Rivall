@@ -18,12 +18,12 @@ type User struct {
 	Password     string          `json:"password" bson:"password"`
 	AvatarImage  string          `json:"avatar_image"  bson:"avatar_image"`
 	GroupIDs     []bson.ObjectID `bson:"group_ids"`
-	ContactIDs   []bson.ObjectID `bson:"contact_ids"`
 	OTP          string          `json:"otp"`
 	RefreshToken string          `json:"refresh_token" bson:"refresh_token"`
 	// Contacts are not stored on the Database, they are fetched from the contact_ids
-	Contacts      []Contact      `json:"contacts"      bson:"omitempty"`
-	GroupRequests []GroupRequest `json:"group_requests" bson:"group_requests"`
+	GroupRequests     []GroupRequest     `json:"group_requests" bson:"group_requests"`
+	Contacts          []Contact          `json:"contacts" bson:"contacts"`
+	PopulatedContacts []PopulatedContact `json:"populated_contacts" bson:"populated_contacts"`
 }
 
 type GroupRequest struct {
@@ -37,10 +37,8 @@ type GroupRequest struct {
 	Status        int8           `json:"status" bson:"status"`
 }
 
-func ReadByUserId(id string) User {
+func ReadByUserIdWithPopulatedFields(id string) User {
 	var result User
-
-	log.Debug().Msgf("Reading user with ID '%v'", id)
 	i, _ := bson.ObjectIDFromHex(id)
 	filter := bson.D{{"_id", i}}
 
@@ -51,16 +49,6 @@ func ReadByUserId(id string) User {
 		return result
 	}
 
-	// fetch contacts
-	for _, contactID := range result.ContactIDs {
-		contact := ReadContactById(contactID.Hex())
-		if contact.ID == bson.NilObjectID {
-			log.Error().Msg("Failed to read contact")
-			continue
-		}
-		result.Contacts = append(result.Contacts, contact)
-	}
-
 	// fetch message group requests
 	for _, requests := range result.GroupRequests {
 		request := ReadGroupRequestById(requests.ID.Hex())
@@ -69,6 +57,48 @@ func ReadByUserId(id string) User {
 			continue
 		}
 		result.GroupRequests = append(result.GroupRequests, request)
+	}
+
+	result.PopulatedContacts = []PopulatedContact{}
+	for _, contact := range result.Contacts {
+
+		log.Info().Msgf("Reading contact with ID '%v'", contact)
+
+		user := ReadByUserId(contact.ContactID.Hex())
+		if user.ID == bson.NilObjectID {
+			log.Error().Msg("Failed to read contact")
+			continue
+		}
+
+		log.Info().Msgf("Reading direct message with ID '%v'", contact.DirectMessageID.Hex())
+		dm, err := ReadDirectMessages(contact.DirectMessageID.Hex())
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to read direct message")
+			continue
+		}
+
+		var pc PopulatedContact
+		pc.ContactID = user.ID.Hex()
+		pc.FirstName = user.FirstName
+		pc.LastName = user.LastName
+		pc.Email = user.Email
+		pc.DirectMessage = dm
+		result.PopulatedContacts = append(result.PopulatedContacts, pc)
+	}
+
+	return result
+}
+
+func ReadByUserId(id string) User {
+	var result User
+	i, _ := bson.ObjectIDFromHex(id)
+	filter := bson.D{{"_id", i}}
+
+	collection := globals.MongoClient.Database(Database).Collection("Users")
+	err := collection.FindOne(context.TODO(), filter).Decode(&result)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to read user")
+		return result
 	}
 
 	return result
@@ -160,9 +190,8 @@ func CreateUser(user User) error {
 	user.RefreshToken = ""
 
 	// set default empty arrays
-	user.ContactIDs = []bson.ObjectID{}
-	user.GroupIDs = []bson.ObjectID{}
 	user.Contacts = []Contact{}
+	user.GroupIDs = []bson.ObjectID{}
 	user.GroupRequests = []GroupRequest{}
 
 	// remove contacts from user object

@@ -5,7 +5,6 @@ import { Text } from '@/components/ui/text';
 import { Spinner } from '@/components/ui/spinner';
 import colors from "tailwindcss/colors"
 import { Redirect } from 'expo-router';
-
 import WelcomeScreen from './(auth)/welcome';
 import StartupErrorScreen from './(auth)/startup_error';
 import { getUser } from '@/api/user';
@@ -29,8 +28,9 @@ export default function App() {
 
   // Check if storage has user id and token
   const user = useUserStore((state: any) => state.user);
-  if (user.id == '' || user.token == '') {
-    console.debug('No user id or token')
+  const access_token = useUserStore((state: any) => state.access_token);
+  if (user._id == '') {
+    console.debug('No user id')
     return (
       <WelcomeScreen/> // Redirect user to login or register
     )
@@ -39,7 +39,7 @@ export default function App() {
   // Get User Data using auth token
   const { data, isLoading, error } = useQuery({
     queryKey: ['getUser', 'Startup'],
-    queryFn: () => getUser(user.id, user.token),
+    queryFn: () => getUser(user._id, access_token),
     retryDelay: attempt => Math.min(attempt > 1 ? 2 ** attempt * 1000 : 1000, 30 * 1000),
   });
 

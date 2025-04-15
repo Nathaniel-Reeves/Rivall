@@ -23,8 +23,8 @@ import { EyeIcon, EyeOffIcon } from "@/components/ui/icon"
 import { useState, useEffect }from "react"
 import { ScrollView } from 'react-native';
 import { Link, useRouter } from 'expo-router';
-
 import { login } from '@/api/auth';
+import { connectToWebSocket } from '@/api/websocket';
 import { useUserStore } from '@/global-store/user_store';
 import {
   validateEmail,
@@ -43,11 +43,13 @@ export default function LoginScreen() {
 
   // For testing purposes
   const [email, setEmail] = useState("nathaniel.jacob.reeves@gmail.com")
-  const [password, setPassword] = useState("password")
+  const [password, setPassword] = useState("mypassword")
 
   const [loginLoading, setLoginLoading] = useState(false)
 
   const setStoreData = useUserStore((state: any) => state.setStoreData)
+  const clearStore = useUserStore((state: any) => state.clearStore)
+  const setWebsocket = useUserStore((state: any) => state.setWebsocket)
   const router = useRouter()
 
   const handleSubmit = async () => {
@@ -77,9 +79,9 @@ export default function LoginScreen() {
       setLoginLoading(false)
       return
     }
+    const data = res.data
+    await setStoreData(data)
 
-    console.debug('Login Successful')
-    setStoreData(res.data)
     setLoginLoading(false)
     router.replace('/entry/home')
   }
@@ -110,7 +112,7 @@ export default function LoginScreen() {
         height: '100%',
       }}
     >
-      <Card className="align-top m-4 my-10 p-10 shadow-md shadow-black flex-col justify-between">
+      <Card className="align-top m-4 my-16 p-10 shadow-md shadow-black flex-col justify-between">
         <Box>
           <Link href="/welcome" asChild replace>
             <Button
@@ -127,7 +129,7 @@ export default function LoginScreen() {
           <FormControl
             isInvalid={isInvalidEmail}
             size="md"
-            isDisabled={false}
+            isDisabled={loginLoading}
             isReadOnly={false}
             isRequired={true}
             className="gap-4"
@@ -155,7 +157,7 @@ export default function LoginScreen() {
           <FormControl
             isInvalid={isInvalidPassword}
             size="md"
-            isDisabled={false}
+            isDisabled={loginLoading}
             isReadOnly={false}
             isRequired={true}
             className="gap-4 mb-4"

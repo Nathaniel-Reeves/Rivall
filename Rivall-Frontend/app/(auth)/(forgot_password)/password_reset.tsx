@@ -7,9 +7,9 @@ import { ChevronLeftIcon } from '@/components/ui/icon';
 import { useState } from "react"
 import { ScrollView } from 'react-native';
 import { Link } from 'expo-router';
-import { EmailInput } from './email_input';
-import { VerificationCodeInput } from './code_input';
-import { ResetPasswordInput } from './reset_password_input';
+import EmailInput from './email_input';
+import VerificationCodeInput from './code_input';
+import ResetPasswordInput from './reset_password_input';
 
 export default function ForgotPasswordScreens() {
   const [step, setStep] = useState('email')
@@ -30,7 +30,7 @@ export default function ForgotPasswordScreens() {
         height: '100%',
       }}
     >
-      <Card className="align-top m-4 my-10 p-10 shadow-md shadow-black flex-col justify-between">
+      <Card className="align-top m-4 my-16 p-10 shadow-md shadow-black flex-col justify-between">
         <Box>
           <Link href="/welcome" asChild replace>
             <Button

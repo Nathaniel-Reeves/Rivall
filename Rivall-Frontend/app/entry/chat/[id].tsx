@@ -1,6 +1,6 @@
 import { BackgroundGradientWrapper } from '@/components/BackgroundGradientWrapper';
 import { FlatList, View } from 'react-native';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack, useLocalSearchParams, useNavigation } from "expo-router";
 import { Input, InputField, InputSlot, InputIcon } from '@/components/ui/input';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
@@ -10,60 +10,107 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { HStack } from '@/components/ui/hstack';
 import { Button, ButtonIcon } from '@/components/ui/button';
+import MessageBox from '@/components/MessageBox';
+import uuid from 'react-native-uuid';
+import { useUserStore } from '@/global-store/user_store';
+import { useQuery } from '@tanstack/react-query';
+import { getChat } from '@/api/contact';
+import { useWebSockets } from '@/hooks/useWebSocket';
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   console.log(id);
-  
-  const messageData = {
-    group_members: {
-      "someID": {
-        first_name: "John",
-        last_name: "Doe",
-        avatar_image: "https://example.com/image.jpg",
-        avatar_color: "#000000"
-      },
-      "anotherID": {
-        first_name: "Jane",
-        last_name: "Doe",
-        avatar_image: "https://example.com/image.jpg",
-        avatar_color: "#000000"
-      }
-    },
-    messages: [
-      {
-        _id: "someID",
-        message: "Hello, world!",
-        timestamp: "2022-01-01T00:00:00.000Z"
-      },
-      {
-        _id: "anotherID",
-        message: "Hi, there!",
-        timestamp: "2022-01-01T00:00:01.000Z"
-      }
-    ]
+
+  const user = useUserStore((state: any) => state.user);
+  const [otherUser, setOtherUser] = useState<any>({});
+  const access_token = useUserStore((state: any) => state.access_token);
+  const [ messageContent, setMessageContent ] = useState<string>("");
+
+  const handleReceivedMessage = (message: any) => {
+    console.log("Received message: ", message);
+    setMessageData((prevState: any) => ({
+      ...prevState,
+      messages: [...prevState.messages, message]
+    }));
+    setMessageContent("");
   }
 
-  const nav = useNavigation();
+  const { sendMessage } = useWebSockets({receivedMessage: handleReceivedMessage});
+  
+  const [messageData, setMessageData] = useState<any>({
+    group_members: {},
+    messages: []
+  });
+
+  // Get User Data using auth token
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['getChat', id],
+    queryFn: () => getChat(user._id, access_token, id),
+    retryDelay: attempt => Math.min(attempt > 1 ? 2 ** attempt * 1000 : 1000, 30 * 1000),
+  });
 
   useEffect(() => {
-    nav.setOptions({
-      title: 'Chat'
-    });
-  }, []);
+    console.log("Chat Data: ", data);
+    if (data) {
+      console.log(JSON.stringify(data, null, 2));
+      setMessageData(data.data);
+      const otherUserID = Object.keys(data.data.group_members).find(key => key !== user._id);
+      setOtherUser(data.data.group_members[otherUserID]);
+    }
+  }, [data]);
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 justify-center w-80 mx-auto">
+        <Text className="text-typography-800 text-2xl font-medium text-pretty text-center mb-20">Loading...</Text>
+      </View>
+    )
+  }
+
+  if (error) {
+    console.error(error)
+    return (
+      <View className="flex-1 justify-center w-80 mx-auto">
+        <Text className="text-typography-800 text-2xl font-medium text-pretty text-center mb-20">Error loading chat</Text>
+      </View>
+    )
+  }
+
+  const handleSendMessage = () => {
+    if (messageContent.trim() === "") {
+      return;
+    }
+    const newMessage = {
+      _id: uuid.v4(),
+      user_id: user._id,
+      receiver_id: otherUser._id,
+      message_data: messageContent,
+      timestamp: new Date().toISOString(),
+      message_type: "text"
+    }
+    sendMessage(newMessage, id);
+    setMessageData((prevState: any) => ({
+      ...prevState,
+      messages: [...prevState.messages, newMessage]
+    }));
+    setMessageContent("");
+  }
 
   return (
     <BackgroundGradientWrapper>
       <Stack.Screen
         options={{
-          title: messageData.group_members["someID"].first_name + " " + messageData.group_members["someID"].last_name,
-          headerShown: true
+          headerShown: true,
+          headerTitle: otherUser.first_name + " " + otherUser.last_name,
         }}
       />
+      <Box className="bg-neutral-300 w-full h-1">
+        <Text className="text-center text-neutral-500 text-xs mt-2">Today</Text>
+      </Box>
       <FlatList
-        data={messageData.messages}
+        data={messageData?.messages}
         renderItem={({ item }) => (
-          <Message message={item} />
+          <MessageBox message={item} chatMembers={messageData.group_members} />
         )}
         keyExtractor={item => item._id}
       >
@@ -72,46 +119,13 @@ export default function ChatScreen() {
       <Box className="bottom-0 w-full h-16 bg-white p-4">
         <HStack className="flex-1 justify-end gap-2">
           <Textarea className="rounded-2xl w-3/4 h-10" size="md">
-            <TextareaInput className="align-top" placeholder="Type a message..."></TextareaInput>
+            <TextareaInput className="align-top" placeholder="Type a message..." onChangeText={(text) => setMessageContent(text)}></TextareaInput>
           </Textarea>
-          <Button className="rounded-full bg-info-800 w-10 h-10">
+          <Button className="rounded-full bg-info-800 w-10 h-10" onPress={handleSendMessage}>
             <ButtonIcon as={ArrowUp} size="2xl" className="text-white"></ButtonIcon>
           </Button>
         </HStack>
       </Box>
     </BackgroundGradientWrapper>
-  )
-}
-
-interface Message {
-  _id: string;
-  message: string;
-  timestamp: string;
-}
-
-function Message({ message }: { message: Message }) {
-
-  function formatTimestamp(timestamp: string): string {
-    const now = new Date();
-    const time = new Date(timestamp);
-    const diffInSeconds = Math.floor((now.getTime() - time.getTime()) / 1000);
-
-    if (diffInSeconds < 60) {
-      return `${diffInSeconds}s`;
-    } else if (diffInSeconds < 3600) {
-      const minutes = Math.floor(diffInSeconds / 60);
-      return `${minutes}m`;
-    } else if (diffInSeconds < 86400) {
-      return time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
-    } else {
-      return time.toLocaleDateString();
-    }
-  }
-
-  return (
-    <View>
-      <Text>{message.message}</Text>
-      <Text>{formatTimestamp(message.timestamp)}</Text>
-    </View>
   )
 }

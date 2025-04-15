@@ -10,6 +10,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
+
+	"Rivall-Backend/globals"
 )
 
 var (
@@ -40,6 +42,12 @@ func checkOrigin(r *http.Request) bool {
 	// Update this to HTTPS
 	case "https://localhost:8080":
 		return true
+	case "http://localhost:8080":
+		return true
+	case "https://96.60.10.12:8080":
+		return true
+	case "http://96.60.10.12:8080":
+		return true
 	default:
 		return false
 	}
@@ -54,8 +62,6 @@ type Manager struct {
 	sync.RWMutex
 	// handlers are functions that are used to handle Events
 	handlers map[string]EventHandler
-	// otps is a map of allowed OTP to accept connections from
-	otps RetentionMap
 }
 
 func (m *Manager) Clients() ClientMap {
@@ -67,8 +73,6 @@ func NewManager(ctx context.Context) *Manager {
 	m := &Manager{
 		clients:  make(ClientMap),
 		handlers: make(map[string]EventHandler),
-		// Create a new retentionMap that removes Otps older than 5 seconds
-		otps: NewRetentionMap(ctx, 5*time.Second),
 	}
 	m.setupEventHandlers()
 	log.Info().Msg("Websocket Manager Created")
@@ -94,11 +98,6 @@ func (m *Manager) routeEvent(event Event, c *Client) error {
 	}
 }
 
-func (m *Manager) CreateOTP() string {
-	otp := m.otps.NewOTP()
-	return otp.Key
-}
-
 func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request) {
 
 	log.Debug().Msg("Serving Websocket Connection")
@@ -115,16 +114,40 @@ func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	otp := r.URL.Query().Get("otp")
-	if otp == "" {
+	tokenString := r.URL.Query().Get("Authorization")
+	if tokenString == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	log.Debug().Msgf("Verifying OTP: %s", otp)
-	if !m.otps.VerifyOTP(otp) {
+	log.Debug().Msgf("Verifying Token: %s", tokenString)
+	claims, ok := globals.SessionManager.ValidateJWTToken(tokenString)
+	if !ok {
 		w.WriteHeader(http.StatusUnauthorized)
-		log.Info().Msg("Unauthorized Connection")
+		w.Write([]byte("Invalid token"))
+		return
+	}
+
+	// get user_id from claims
+	userID, ok = claims["user_id"].(string)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Invalid token: user_id"))
+		return
+	}
+
+	// check if session exists
+	session, ok := globals.SessionManager.GetSession(tokenString)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Invalid token: token not found"))
+		return
+	}
+
+	// check if session is valid
+	if session.TokenExpiresAt.Before(time.Now()) {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Token expired"))
 		return
 	}
 

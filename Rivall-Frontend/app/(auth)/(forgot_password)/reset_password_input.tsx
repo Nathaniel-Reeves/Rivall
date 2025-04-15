@@ -31,7 +31,7 @@ interface ResetPasswordInputProps {
   setResetPasswordState: (state: string) => void;
 }
 
-export function ResetPasswordInput({ password, setPassword, resetPasswordState, setResetPasswordState }: ResetPasswordInputProps) {
+export default function ResetPasswordInput({ password, setPassword, resetPasswordState, setResetPasswordState }: ResetPasswordInputProps) {
 
   const [confirm_password, setConfirmPassword] = useState('')
   const [passwordsMatch, setPasswordsMatch] = useState(true)
@@ -85,7 +85,7 @@ export function ResetPasswordInput({ password, setPassword, resetPasswordState, 
   }, [password, confirm_password])
 
   return (
-    <VStack className="gap-4 mt-10">
+    <VStack className="gap-4 mt-16">
       <Text className="text-typography-800 text-xl text-pretty text-left mb-3">Create a new password and regain access to your account.</Text>
       <FormControl
         isInvalid={!passwordsMatch || isInvalidPassword || resetPasswordState == 'error'}

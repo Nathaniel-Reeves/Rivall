@@ -2,7 +2,7 @@
   "expo": {
     "name": "Rivall-Frontend",
     "slug": "Rivall-Frontend",
-    "scheme": "rivall-frontend",
+    "scheme": "rivall",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -27,7 +27,15 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": true
+        }
+      ]
     ]
   }
 }

@@ -31,7 +31,7 @@ interface VerificationCodeInputProps {
   setCodeSentState: (state: string) => void;
 }
 
-export function VerificationCodeInput({ setStep, code, setCode, codeValidatedState, setCodeValidatedState, email, codeSentState, setCodeSentState }: VerificationCodeInputProps) {
+export default function VerificationCodeInput({ setStep, code, setCode, codeValidatedState, setCodeValidatedState, email, codeSentState, setCodeSentState }: VerificationCodeInputProps) {
 
   const [isInvalidCode, setIsInvalidCode] = useState(false)
   const [codeResent, setCodeResent] = useState(false)
@@ -88,7 +88,7 @@ export function VerificationCodeInput({ setStep, code, setCode, codeValidatedSta
   }, [])
 
   return (
-    <VStack className="gap-4 mt-10">
+    <VStack className="gap-4 mt-16">
       <Text className="text-typography-800 text-xl text-pretty text-left mb-3">A verification code has been sent to ‘{email}’.  Submit this code to reset your account password.</Text>
       {codeResent ? <Text className="text-typography-800 text-lg text-pretty text-left mb-3">Code resent to ‘{email}’.</Text> : null}
       <FormControl

@@ -146,7 +146,7 @@ export default function RegistrationScreen() {
       }}
     >
       <Card
-        className="align-top m-4 my-10 p-10 shadow-md shadow-black flex-col justify-between"
+        className="align-top m-4 my-16 p-10 shadow-md shadow-black flex-col justify-between"
       >
         <Box>
           <Link href="/welcome" asChild replace>

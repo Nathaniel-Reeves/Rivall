@@ -14,6 +14,14 @@ type Contact struct {
 	ContactID       bson.ObjectID `json:"contact_id"   bson:"contact_id"`
 }
 
+type PopulatedContact struct {
+	ContactID     string         `json:"contact_id"   bson:"contact_id"`
+	FirstName     string         `json:"first_name"   bson:"first_name"`
+	LastName      string         `json:"last_name"    bson:"last_name"`
+	Email         string         `json:"email"        bson:"email"`
+	DirectMessage DirectMessages `json:"direct_message" bson:"direct_message"`
+}
+
 func CreateContact(userID string, contactID string) error {
 	collection := globals.MongoClient.Database(Database).Collection("Users")
 
@@ -46,18 +54,29 @@ func CreateContact(userID string, contactID string) error {
 	}
 
 	filter := bson.D{{"_id", bsonUserID}}
-	update := bson.D{{"$push", bson.D{{"contact_ids", contact.ID}}}}
+	update := bson.D{{"$push", bson.D{{"contacts", contact}}}}
 	_, err = collection.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to add contact to user")
 	}
 
+	otherContact := Contact{
+		ID:              bson.NewObjectID(),
+		DirectMessageID: bsonDirectMessageID,
+		ContactID:       bsonUserID,
+	}
+
 	filter = bson.D{{"_id", bsonContactID}}
-	update = bson.D{{"$push", bson.D{{"contact_ids", contact.ID}}}}
+	update = bson.D{{"$push", bson.D{{"contacts", otherContact}}}}
 	_, err = collection.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to add user to contact")
 	}
 
 	return err
+}
+
+func PopulateContact(contact Contact) User {
+	// Populate contact with user data
+	return ReadByUserId(contact.ContactID.Hex())
 }

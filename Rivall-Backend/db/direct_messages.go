@@ -46,7 +46,7 @@ func CreateDirectMessages(userAID string, userBID string) (string, error) {
 		Messages:           []Message{},
 		LastMessage: Message{
 			ID:          bson.NewObjectID(),
-			SenderID:    bsonUserAID,
+			UserID:      bsonUserAID,
 			MessageData: "",
 			Timestamp:   time.Now().Format(time.RFC3339),
 			MessageType: "text",
@@ -71,8 +71,14 @@ func ReadDirectMessages(directMessageID string) (DirectMessages, error) {
 	// Read direct messages group from database
 	collection := globals.MongoClient.Database(Database).Collection("DirectMessages")
 
+	bsonDirectMessageID, err := bson.ObjectIDFromHex(directMessageID)
+	if err != nil {
+		globals.Logger.Error().Err(err).Msg("failed to convert direct message ID")
+		return DirectMessages{}, err
+	}
+
 	var directMessages DirectMessages
-	err := collection.FindOne(context.Background(), bson.M{"_id": directMessageID}).Decode(&directMessages)
+	err = collection.FindOne(context.Background(), bson.D{{"_id", bsonDirectMessageID}}).Decode(&directMessages)
 	if err != nil {
 		return DirectMessages{}, err
 	}
@@ -100,7 +106,6 @@ func DirectMessageExists(directMessageID string) bool {
 }
 
 func UserInDirectMessage(directMessageID string, userID string) bool {
-	// Check if a user is in a direct message group
 	collection := globals.MongoClient.Database(Database).Collection("DirectMessages")
 
 	bsonDirectMessageID, err := bson.ObjectIDFromHex(directMessageID)
@@ -110,17 +115,22 @@ func UserInDirectMessage(directMessageID string, userID string) bool {
 	}
 
 	var result DirectMessages
-	err = collection.FindOne(context.Background(), bson.M{"_id": bsonDirectMessageID}).Decode(&result)
+
+	filter := bson.D{{"_id", bsonDirectMessageID}}
+	err = collection.FindOne(context.TODO(), filter).Decode(&result)
+	globals.Logger.Info().Msgf("Result: %v", result)
 	if err != nil {
+		globals.Logger.Error().Err(err).Msg("failed to find direct message group")
 		return false
 	}
 
-	// Check if the user ID matches either UserAID or UserBID
-	if result.UserAID.Hex() == userID || result.UserBID.Hex() == userID {
-		return true
-	}
+	UserA := result.UserAID.Hex()
+	globals.Logger.Info().Msgf("UserAID: %s", UserA)
+	UserB := result.UserBID.Hex()
+	globals.Logger.Info().Msgf("UserBID: %s", UserB)
 
-	return false
+	// Check if the user ID matches either UserAID or UserBID
+	return UserA == userID || UserB == userID
 }
 
 func InsertMessage(directMessageID string, message Message) error {

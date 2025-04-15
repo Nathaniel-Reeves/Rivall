@@ -87,7 +87,6 @@ type LoginUserReq struct {
 }
 
 type LoginUserRes struct {
-	OTP                   string    `json:"otp"`
 	AccessToken           string    `json:"access_token"`
 	RefreshToken          string    `json:"refresh_token"`
 	AccessTokenExpiresAt  time.Time `json:"access_token_expires_at"`
@@ -125,7 +124,6 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	accessSession := globals.SessionManager.NewAccessSession(user.ID.Hex())
 	refreshSession := globals.SessionManager.NewRefreshSession(user.ID.Hex())
-	user.OTP = websocket.WSManager.CreateOTP()
 
 	su := UserRes{
 		ID:          user.ID.Hex(),
@@ -136,7 +134,6 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res := LoginUserRes{
-		OTP:                   user.OTP,
 		AccessToken:           accessSession.Token,
 		RefreshToken:          refreshSession.Token,
 		AccessTokenExpiresAt:  accessSession.TokenExpiresAt,
@@ -245,9 +242,6 @@ func ValidateAccountRecoveryCode(w http.ResponseWriter, r *http.Request) {
 	// Create Refresh Session
 	refreshSession := globals.SessionManager.NewRefreshSession(user.ID.Hex())
 
-	// Create OTP for websocket
-	user.OTP = websocket.WSManager.CreateOTP()
-
 	// Clean Response Data
 	su := UserRes{
 		ID:          user.ID.Hex(),
@@ -258,7 +252,6 @@ func ValidateAccountRecoveryCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res := LoginUserRes{
-		OTP:                   user.OTP,
 		AccessToken:           accessSession.Token,
 		RefreshToken:          refreshSession.Token,
 		AccessTokenExpiresAt:  accessSession.TokenExpiresAt,

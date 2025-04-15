@@ -28,7 +28,7 @@ interface EmailInputProps {
   setCodeSentState: (state: string) => void;
 }
 
-export function EmailInput({ setStep, email, setEmail, codeSentState, setCodeSentState }: EmailInputProps) {
+export default function EmailInput({ setStep, email, setEmail, codeSentState, setCodeSentState }: EmailInputProps) {
 
   const [isInvalidEmail, setIsInvalidEmail] = useState(false)
   const [accountDoesntExist, setAccountDoesntExist] = useState(false)
@@ -63,7 +63,7 @@ export function EmailInput({ setStep, email, setEmail, codeSentState, setCodeSen
   }, [email])
 
   return (
-    <VStack className="gap-4 mt-10">
+    <VStack className="gap-4 mt-16">
       <Text className="text-typography-800 text-xl text-pretty text-left mb-3">Send us your email and we will send you a code to regain access to your account.</Text>
       <FormControl
         isInvalid={isInvalidEmail || accountDoesntExist}
