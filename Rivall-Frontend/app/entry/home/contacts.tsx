@@ -31,9 +31,8 @@ export default function ContactsScreen() {
       <FlatList
         data={contacts}
         renderItem={({ item }) => (
-          <ContactCard contact={item} />
+          <ContactCard key={item._id} contact={item} />
         )}
-        keyExtractor={item => item._id}
       >
       </FlatList>
     </BackgroundGradientWrapper>

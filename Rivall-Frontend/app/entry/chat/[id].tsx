@@ -1,6 +1,6 @@
 import { BackgroundGradientWrapper } from '@/components/BackgroundGradientWrapper';
 import { FlatList, View } from 'react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Stack, useLocalSearchParams, useNavigation } from "expo-router";
 import { Input, InputField, InputSlot, InputIcon } from '@/components/ui/input';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
@@ -16,6 +16,7 @@ import { useUserStore } from '@/global-store/user_store';
 import { useQuery } from '@tanstack/react-query';
 import { getChat } from '@/api/contact';
 import { useWebSockets } from '@/hooks/useWebSocket';
+import { KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, ScrollView } from 'react-native';
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,6 +26,7 @@ export default function ChatScreen() {
   const [otherUser, setOtherUser] = useState<any>({});
   const access_token = useUserStore((state: any) => state.access_token);
   const [ messageContent, setMessageContent ] = useState<string>("");
+  let scrollViewRef = useRef<ScrollView>();
 
   const handleReceivedMessage = (message: any) => {
     console.log("Received message: ", message);
@@ -32,7 +34,6 @@ export default function ChatScreen() {
       ...prevState,
       messages: [...prevState.messages, message]
     }));
-    setMessageContent("");
   }
 
   const { sendMessage } = useWebSockets({receivedMessage: handleReceivedMessage});
@@ -55,6 +56,10 @@ export default function ChatScreen() {
       console.log(JSON.stringify(data, null, 2));
       setMessageData(data.data);
       const otherUserID = Object.keys(data.data.group_members).find(key => key !== user._id);
+      if (!otherUserID) {
+        console.error("No other user found in group members.");
+        return;
+      }
       setOtherUser(data.data.group_members[otherUserID]);
     }
   }, [data]);
@@ -104,28 +109,45 @@ export default function ChatScreen() {
           headerTitle: otherUser.first_name + " " + otherUser.last_name,
         }}
       />
-      <Box className="bg-neutral-300 w-full h-1">
-        <Text className="text-center text-neutral-500 text-xs mt-2">Today</Text>
-      </Box>
-      <FlatList
-        data={messageData?.messages}
-        renderItem={({ item }) => (
-          <MessageBox message={item} chatMembers={messageData.group_members} />
-        )}
-        keyExtractor={item => item._id}
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
       >
-      </FlatList>
-      <Box className="bg-neutral-300 w-full h-1"></Box>
-      <Box className="bottom-0 w-full h-16 bg-white p-4">
-        <HStack className="flex-1 justify-end gap-2">
-          <Textarea className="rounded-2xl w-3/4 h-10" size="md">
-            <TextareaInput className="align-top" placeholder="Type a message..." onChangeText={(text) => setMessageContent(text)}></TextareaInput>
-          </Textarea>
-          <Button className="rounded-full bg-info-800 w-10 h-10" onPress={handleSendMessage}>
-            <ButtonIcon as={ArrowUp} size="2xl" className="text-white"></ButtonIcon>
-          </Button>
-        </HStack>
-      </Box>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <FlatList
+            data={messageData?.messages}
+            renderItem={({ item }) => (
+              <MessageBox key={item._id} message={item} chatMembers={messageData.group_members} />
+            )}
+            className="mb-20"
+            ref={(ref) => {
+              scrollViewRef = ref;
+            }}
+            onContentSizeChange={() => {
+              if (scrollViewRef) {
+                setTimeout(() => {
+                  scrollViewRef.scrollToEnd({ animated: false });
+                }, 100);
+              }
+            }}
+          >
+          </FlatList>
+        </TouchableWithoutFeedback>
+        <Box className="w-full h-20 bottom-0 absolute bg-white">
+          <Box className="bg-neutral-300 w-full h-1"></Box>
+          <Box className="w-full h-16 bg-white p-4">
+            <HStack className="flex-1 justify-end gap-2">
+              <Textarea className="rounded-2xl w-3/4 h-10" size="md">
+                <TextareaInput className="align-top" placeholder="Type a message..." onChangeText={(text) => setMessageContent(text)}></TextareaInput>
+              </Textarea>
+              <Button className="rounded-full bg-info-800 w-10 h-10" onPress={handleSendMessage}>
+                <ButtonIcon as={ArrowUp} size="2xl" className="text-white"></ButtonIcon>
+              </Button>
+            </HStack>
+          </Box>
+        </Box>
+      </KeyboardAvoidingView>
     </BackgroundGradientWrapper>
   )
 }
