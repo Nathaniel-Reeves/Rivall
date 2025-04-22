@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Icon } from "@/components/ui/icon"
-import { CircleUserRound, List, Share2 } from 'lucide-react-native';
+import { CircleUserRound, MessageSquare, Share2 } from 'lucide-react-native';
 import { Button, ButtonIcon } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
 import * as Linking from 'expo-linking';
@@ -43,11 +43,11 @@ const Layout = () => {
       }}
       />
       <Tabs.Screen
-      name="contacts"
+      name="messages"
       options={{
-        title: 'Contacts',
+        title: 'Messages',
         headerShown: true,
-        tabBarIcon: ({ color }) => <Icon size='xl' color={color} as={List} />,
+        tabBarIcon: ({ color }) => <Icon size='xl' color={color} as={MessageSquare} />,
       }}
       />
     </Tabs>

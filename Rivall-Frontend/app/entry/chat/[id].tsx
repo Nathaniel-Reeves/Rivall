@@ -37,6 +37,34 @@ export default function ChatScreen() {
   }
 
   const { sendMessage } = useWebSockets({receivedMessage: handleReceivedMessage});
+
+  const handleSendMessage = async () => {
+    if (messageContent === "") {
+      console.error("Message content is empty");
+      return;
+    }
+    const newMessage = {
+      _id: uuid.v4(),
+      user_id: user._id,
+      receiver_id: otherUser._id,
+      message_data: messageContent,
+      timestamp: new Date().toISOString(),
+      message_type: "text"
+    }
+    sendMessage(newMessage, id);
+    setMessageData((prevState: any) => ({
+      ...prevState,
+      messages: [...prevState.messages, newMessage]
+    }));
+    setMessageContent("");
+    if (scrollViewRef.current) {
+      setTimeout(() => {
+        if (scrollViewRef.current) {
+          scrollViewRef.current.scrollToEnd({ animated: false });
+        }
+      }, 100);
+    }
+  }
   
   const [messageData, setMessageData] = useState<any>({
     group_members: {},
@@ -51,9 +79,7 @@ export default function ChatScreen() {
   });
 
   useEffect(() => {
-    console.log("Chat Data: ", data);
     if (data) {
-      console.log(JSON.stringify(data, null, 2));
       setMessageData(data.data);
       const otherUserID = Object.keys(data.data.group_members).find(key => key !== user._id);
       if (!otherUserID) {
@@ -79,26 +105,6 @@ export default function ChatScreen() {
         <Text className="text-typography-800 text-2xl font-medium text-pretty text-center mb-20">Error loading chat</Text>
       </View>
     )
-  }
-
-  const handleSendMessage = () => {
-    if (messageContent.trim() === "") {
-      return;
-    }
-    const newMessage = {
-      _id: uuid.v4(),
-      user_id: user._id,
-      receiver_id: otherUser._id,
-      message_data: messageContent,
-      timestamp: new Date().toISOString(),
-      message_type: "text"
-    }
-    sendMessage(newMessage, id);
-    setMessageData((prevState: any) => ({
-      ...prevState,
-      messages: [...prevState.messages, newMessage]
-    }));
-    setMessageContent("");
   }
 
   return (
@@ -127,7 +133,9 @@ export default function ChatScreen() {
             onContentSizeChange={() => {
               if (scrollViewRef) {
                 setTimeout(() => {
-                  scrollViewRef.scrollToEnd({ animated: false });
+                  if (scrollViewRef) {
+                    scrollViewRef.scrollToEnd({ animated: false });
+                  }
                 }, 100);
               }
             }}
@@ -141,7 +149,7 @@ export default function ChatScreen() {
               <Textarea className="rounded-2xl w-3/4 h-10" size="md">
                 <TextareaInput className="align-top" placeholder="Type a message..." onChangeText={(text) => setMessageContent(text)}></TextareaInput>
               </Textarea>
-              <Button className="rounded-full bg-info-800 w-10 h-10" onPress={handleSendMessage}>
+              <Button className="rounded-full bg-info-800 w-10 h-10" onPress={() => handleSendMessage()}>
                 <ButtonIcon as={ArrowUp} size="2xl" className="text-white"></ButtonIcon>
               </Button>
             </HStack>

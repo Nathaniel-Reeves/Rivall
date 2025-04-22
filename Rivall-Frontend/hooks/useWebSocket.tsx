@@ -26,9 +26,10 @@ export const useWebSockets = ({ receivedMessage }: Props) => {
     };
 
     ws.onmessage = (event) => {
+      console.log('WebSocket message received');
       const data = JSON.parse(event.data);
+
       if (data.type === 'new_message') {
-        console.log('New message:', data.payload);
         receivedMessage(data.payload);
       } else {
         console.log('Unknown message type:', data.type);
@@ -38,7 +39,7 @@ export const useWebSockets = ({ receivedMessage }: Props) => {
     return () => {
       ws.close();
     }
-  }, []);
+  }, [receivedMessage]);
 
   const sendMessage = (payload: any, direct_message_id: string ) => {
     if (ws.readyState === WebSocket.OPEN) {

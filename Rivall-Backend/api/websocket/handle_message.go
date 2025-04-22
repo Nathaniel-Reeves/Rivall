@@ -91,8 +91,11 @@ func SendMessageHandler(event Event, c *Client) error {
 
 	// Broadcast to the other Client if user is online
 	if _, ok := c.Manager().Clients()[chatevent.ReceiverID]; !ok {
+		log.Debug().Msgf("Receiver user not connected: %s", chatevent.ReceiverID)
 		return nil
 	}
+	log.Info().Msgf("Sending message to %s", chatevent.ReceiverID)
+	log.Info().Msgf("Clients: %v", c.Manager().Clients())
 	c.Manager().Clients()[chatevent.ReceiverID].Egress <- outgoingEvent
 	return nil
 }
