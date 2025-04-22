@@ -67,4 +67,4 @@ Make sure your MongoDB Atlas cluster is properly configured and accessible from 
 
 ## License  
 
-This project is licensed under the MIT License.  
+This project is licensed under the Apache License V2.0.  
